@@ -18,6 +18,7 @@ FROM nginx:alpine
 
 WORKDIR /usr/share/nginx/html
 COPY --from=build /app/build/web ./
+COPY nginx.conf.template /etc/nginx/conf.d/default.conf.template
 
 EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["sh", "-c", "envsubst '${PORT}' < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf && exec nginx -g 'daemon off;'"]

@@ -27,3 +27,7 @@ Se añadió un `Dockerfile` que construye la app en modo web y la sirve con Ngin
 5. Cuando el deploy termine, abre la URL pública que ofrece Railway.
 
 Si usas otra versión de Flutter, ajusta la imagen base en `Dockerfile` (`FROM ghcr.io/cirruslabs/flutter:<versión>`).
+
+Notas de contenedor:
+- El `nginx.conf.template` usa `PORT` si Railway lo define; si no, escucha en 80.
+- `Dockerfile` genera la carpeta `web` en el build. Si prefieres, puedes crearla y versionarla para evitar ese paso.
