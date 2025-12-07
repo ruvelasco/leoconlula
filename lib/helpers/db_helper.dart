@@ -12,10 +12,9 @@ class DBHelper {
   }
 
   static Future<Database> _initDB() async {
-    final dbPath = await getDatabasesPath();
-    final path = join(dbPath, 'leoconlula.db');
+    final dbPath = kIsWeb ? 'leoconlula.db' : join(await getDatabasesPath(), 'leoconlula.db');
     return await openDatabase(
-      path,
+      dbPath,
       version: 5, // Versión con orden y actividades habilitadas
       onCreate: (db, version) async {
         await _createMainTables(db);
