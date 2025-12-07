@@ -1,0 +1,68 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Usuario {
+  id                      Int       @id @default(autoincrement())
+  nombre                  String?
+  foto                    String?
+  fuente                  String?   @default("ARIAL")
+  tipo                    String?   @default("MAYÚSCULAS")
+  voz                     String?   @default("MONICA")
+  leer_palabras           Boolean   @default(true)
+  refuerzo_acierto        Boolean   @default(true)
+  refuerzo_error          Boolean   @default(true)
+  ayudas_visuales         Boolean   @default(false)
+  modo_infantil           Boolean   @default(false)
+  numero_repeticiones     Int       @default(5)
+  orden_actividades       String?   @default("aprendizaje,discriminacion,discriminacion_inversa,silabas,arrastre,doble,silabas_orden,silabas_distrac")
+  actividades_habilitadas String?   @default("aprendizaje,discriminacion,discriminacion_inversa,silabas,arrastre,doble,silabas_orden,silabas_distrac")
+  vocabularios            Vocabulario[]
+  sesiones                ActividadSesion[]
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+}
+
+model Vocabulario {
+  id           Int      @id @default(autoincrement())
+  nombreImagen String?
+  label        String?
+  silabas      String?
+  usuario      Usuario? @relation(fields: [usuarioId], references: [id])
+  usuarioId    Int?
+  sesiones     SesionVocabulario[]
+}
+
+model ActividadSesion {
+  id          Int      @id @default(autoincrement())
+  user        Usuario  @relation(fields: [userId], references: [id])
+  userId      Int
+  actividad   String
+  inicio_at   BigInt
+  fin_at      BigInt?
+  duracion_ms Int?
+  aciertos    Int      @default(0)
+  errores     Int      @default(0)
+  nivel       String?
+  resultado   String?
+  palabra1    String?
+  palabra2    String?
+  palabra3    String?
+  detalles    SesionVocabulario[]
+}
+
+model SesionVocabulario {
+  id             Int              @id @default(autoincrement())
+  sesion         ActividadSesion  @relation(fields: [sesionId], references: [id], onDelete: Cascade)
+  sesionId       Int
+  vocabulario    Vocabulario?     @relation(fields: [vocabularioId], references: [id])
+  vocabularioId  Int?
+  mostrada       Boolean          @default(false)
+  acierto        Boolean          @default(false)
+  tiempo_ms      Int?
+}
