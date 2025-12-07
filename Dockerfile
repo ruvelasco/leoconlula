@@ -21,4 +21,4 @@ COPY --from=build /app/build/web ./
 COPY nginx.conf.template /etc/nginx/conf.d/default.conf.template
 
 EXPOSE 80
-CMD ["sh", "-c", "envsubst '${PORT}' < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf && exec nginx -g 'daemon off;'"]
+CMD ["sh", "-c", "PORT=${PORT:-8080}; export PORT; envsubst '$PORT' < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf && exec nginx -g 'daemon off;'"]
