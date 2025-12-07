@@ -1,0 +1,12 @@
+.git
+.gitignore
+.dart_tool
+.idea
+.vscode
+.android
+.ios
+build
+.build
+.pub-cache
+.pub
+*.iml
