@@ -1,4 +1,5 @@
 # Use Node.js 20 with Debian (includes OpenSSL)
+# Updated for Railway deployment
 FROM node:20-bullseye-slim
 
 # Install OpenSSL and other dependencies
