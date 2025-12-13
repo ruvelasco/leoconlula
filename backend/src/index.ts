@@ -197,7 +197,12 @@ app.post('/vocabulario', async (req, res) => {
 app.get('/vocabulario', async (req, res) => {
   const userId = req.query.userId ? Number(req.query.userId) : undefined;
   const items = await prisma.vocabulario.findMany({ where: { usuarioId: userId } });
-  res.json(items);
+  // Agregar idUsuario para compatibilidad con Flutter (SQLite usa idUsuario)
+  const itemsCompat = items.map((item: any) => ({
+    ...item,
+    idUsuario: item.usuarioId
+  }));
+  res.json(itemsCompat);
 });
 
 app.delete('/vocabulario/:id', async (req, res) => {

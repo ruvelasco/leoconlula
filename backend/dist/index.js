@@ -8,11 +8,15 @@ import multer from 'multer';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
+console.log('🚀 Starting LeoConLula Backend...');
 dotenv.config();
+console.log('✅ Environment loaded');
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+console.log('📦 Initializing Express and Prisma...');
 const app = express();
 const prisma = new PrismaClient();
+console.log('✅ Express and Prisma initialized');
 // Configurar multer para almacenamiento de archivos
 const uploadsDir = path.join(__dirname, '../uploads');
 const avatarsDir = path.join(uploadsDir, 'avatars');
@@ -181,7 +185,12 @@ app.post('/vocabulario', async (req, res) => {
 app.get('/vocabulario', async (req, res) => {
     const userId = req.query.userId ? Number(req.query.userId) : undefined;
     const items = await prisma.vocabulario.findMany({ where: { usuarioId: userId } });
-    res.json(items);
+    // Agregar idUsuario para compatibilidad con Flutter (SQLite usa idUsuario)
+    const itemsCompat = items.map((item) => ({
+        ...item,
+        idUsuario: item.usuarioId
+    }));
+    res.json(itemsCompat);
 });
 app.delete('/vocabulario/:id', async (req, res) => {
     const id = Number(req.params.id);

@@ -63,12 +63,8 @@ class _PrevioJuegoPageState extends State<PrevioJuegoPage> {
   }
 
   Future<void> _cargarVocabulario() async {
-    final db = await DBHelper.database;
-    final resultado = await db.query(
-      'vocabulario',
-      where: 'idUsuario = ?',
-      whereArgs: [widget.userId],
-    );
+    // Usar DataService para que funcione tanto en local como en remoto
+    final resultado = await DataService.obtenerVocabulario(userId: widget.userId);
 
     // Agrupar palabras de 3 en 3
     List<List<Map<String, dynamic>>> grupos = [];

@@ -72,12 +72,8 @@ class _VocabularioPageState extends State<VocabularioPage> {
   }
 
   Future<List<Map<String, dynamic>>> _cargarVocabularioGuardado() async {
-    final db = await DBHelper.database;
-    return await db.query(
-      'vocabulario',
-      where: 'idUsuario = ?',
-      whereArgs: [widget.userId],
-    );
+    // Usar DataService para que funcione tanto en local como en remoto
+    return await DataService.obtenerVocabulario(userId: widget.userId);
   }
 
   Future<String> obtenerSilabas(String palabra) async {
