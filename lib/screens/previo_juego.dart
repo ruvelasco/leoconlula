@@ -63,19 +63,35 @@ class _PrevioJuegoPageState extends State<PrevioJuegoPage> {
   }
 
   Future<void> _cargarVocabulario() async {
-    // Usar DataService para que funcione tanto en local como en remoto
-    final resultado = await DataService.obtenerVocabulario(userId: widget.userId);
+    try {
+      // Usar DataService para que funcione tanto en local como en remoto
+      debugPrint('🔍 PREVIO_JUEGO: Cargando vocabulario para usuario ${widget.userId}...');
+      debugPrint('🔍 PREVIO_JUEGO: userId type: ${widget.userId.runtimeType}');
+      debugPrint('🔍 PREVIO_JUEGO: useRemoteApi: ${DataService.useRemoteApi}');
+      final resultado = await DataService.obtenerVocabulario(userId: widget.userId);
+      debugPrint('📚 Vocabulario obtenido: ${resultado.length} palabras');
 
-    // Agrupar palabras de 3 en 3
-    List<List<Map<String, dynamic>>> grupos = [];
-    for (int i = 0; i < resultado.length; i += 3) {
-      final grupo = resultado.skip(i).take(3).toList();
-      grupos.add(grupo);
+      if (resultado.isEmpty) {
+        debugPrint('⚠️ No hay vocabulario para este usuario');
+      }
+
+      // Agrupar palabras de 3 en 3
+      List<List<Map<String, dynamic>>> grupos = [];
+      for (int i = 0; i < resultado.length; i += 3) {
+        final grupo = resultado.skip(i).take(3).toList();
+        grupos.add(grupo);
+      }
+
+      debugPrint('📋 Grupos creados: ${grupos.length} tarjetas');
+      setState(() {
+        tarjetasVocabulario = grupos;
+      });
+    } catch (e) {
+      debugPrint('❌ Error al cargar vocabulario: $e');
+      setState(() {
+        tarjetasVocabulario = []; // Asegurar que no se quede en loading infinito
+      });
     }
-
-    setState(() {
-      tarjetasVocabulario = grupos;
-    });
   }
 
   Future<void> _cargarConfiguracionActividades() async {
@@ -219,7 +235,7 @@ class _PrevioJuegoPageState extends State<PrevioJuegoPage> {
             await Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => const ConfiguracionUsuarioPage(),
+                builder: (context) => ConfiguracionUsuarioPage(userId: widget.userId),
               ),
             );
             // Recargar configuración después de volver de configuración
@@ -236,10 +252,32 @@ class _PrevioJuegoPageState extends State<PrevioJuegoPage> {
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       body: BackgroundContainer(
-        child:
-            tarjetasVocabulario.isEmpty
-                ? const Center(child: CircularProgressIndicator())
-                : Column(
+        child: tarjetasVocabulario.isEmpty
+            ? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.library_books, size: 80, color: Color.fromRGBO(63, 46, 31, 0.5)),
+                    const SizedBox(height: 20),
+                    Text(
+                      'No hay vocabulario para este usuario',
+                      style: TextStyle(
+                        fontSize: 20,
+                        color: const Color.fromRGBO(63, 46, 31, 1),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      'Agrega palabras en la sección de Vocabulario',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: const Color.fromRGBO(63, 46, 31, 0.7),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            : Column(
                   children: [
                     const SizedBox(height: 20),
                     // Carrusel de tarjetas

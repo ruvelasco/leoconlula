@@ -8,7 +8,9 @@ import 'vocabulario.dart';
 import 'package:leoconlula/helpers/db_helper.dart';
 
 class ConfiguracionUsuarioPage extends StatefulWidget {
-  const ConfiguracionUsuarioPage({super.key});
+  final int userId;
+
+  const ConfiguracionUsuarioPage({super.key, required this.userId});
 
   @override
   State<ConfiguracionUsuarioPage> createState() =>
@@ -16,7 +18,7 @@ class ConfiguracionUsuarioPage extends StatefulWidget {
 }
 
 class _ConfiguracionUsuarioPageState extends State<ConfiguracionUsuarioPage> {
-  int userId = 1;
+  late int userId;
   String fuenteSeleccionada = 'ARIAL'; // <--- Añade esto
   String vozSeleccionada = 'MONICA'; // Valor por defecto
   String? fotoUsuario;
@@ -56,22 +58,26 @@ class _ConfiguracionUsuarioPageState extends State<ConfiguracionUsuarioPage> {
   @override
   void initState() {
     super.initState();
+    userId = widget.userId;
     _cargarConfiguracionUsuario();
   }
 
   Future<void> _cargarConfiguracionUsuario() async {
-    // Obtén el usuario actual de la BD (aquí se asume el primero)
+    // Obtener el usuario específico por su ID
     final usuarios = await DataService.obtenerUsuarios();
     if (usuarios.isNotEmpty) {
-      final usuario = usuarios.first;
-      final id = usuario['id'] as int;
+      // Buscar el usuario con el userId correcto
+      final usuario = usuarios.firstWhere(
+        (u) => u['id'] == userId,
+        orElse: () => usuarios.first,
+      );
 
-      // Cargar orden y actividades habilitadas
-      final orden = await DataService.obtenerOrdenActividades(id);
-      final habilitadas = await DataService.obtenerActividadesHabilitadas(id);
+      // Cargar orden y actividades habilitadas para este usuario
+      final orden = await DataService.obtenerOrdenActividades(userId);
+      final habilitadas = await DataService.obtenerActividadesHabilitadas(userId);
 
       setState(() {
-        userId = id;
+        // NO sobrescribir userId - ya está configurado en initState
         fuenteSeleccionada =
             usuario['fuente'] ?? 'ARIAL'; // <--- Carga la fuente
         vozSeleccionada = usuario['voz'] ?? 'MONICA'; // <--- Añade esto

@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import '../helpers/db_helper.dart';
 import 'api_service.dart';
 
@@ -104,13 +105,18 @@ class DataService {
 
   static Future<List<Map<String, dynamic>>> obtenerVocabulario(
       {int? userId}) async {
+    debugPrint('🔧 DataService.obtenerVocabulario - userId: $userId, useRemoteApi: $useRemoteApi');
     if (useRemoteApi) {
-      return await ApiService.obtenerVocabulario(userId: userId);
+      final result = await ApiService.obtenerVocabulario(userId: userId);
+      debugPrint('🔧 DataService.obtenerVocabulario - Resultado API: ${result.length} items');
+      return result;
     } else {
       // DBHelper.obtenerVocabulario() no tiene parámetro userId, necesitamos filtrar manualmente
       final todos = await DBHelper.obtenerVocabulario();
       if (userId == null) return todos;
-      return todos.where((v) => v['idUsuario'] == userId).toList();
+      final filtered = todos.where((v) => v['idUsuario'] == userId).toList();
+      debugPrint('🔧 DataService.obtenerVocabulario - Resultado Local: ${filtered.length} items');
+      return filtered;
     }
   }
 

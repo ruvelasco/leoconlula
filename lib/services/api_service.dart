@@ -225,16 +225,27 @@ class ApiService {
           ? Uri.parse('$baseUrl/vocabulario?userId=$userId')
           : Uri.parse('$baseUrl/vocabulario');
 
+      debugPrint('📤 API: Obteniendo vocabulario...');
+      debugPrint('📍 URL: $uri');
+      debugPrint('📍 userId parameter: $userId');
+
       final response = await http.get(uri);
+
+      debugPrint('📥 Status: ${response.statusCode}');
+      debugPrint('📥 Body length: ${response.body.length}');
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
+        debugPrint('✅ ${data.length} vocabulario items obtenidos');
+        if (data.isNotEmpty) {
+          debugPrint('📊 Primer item: ${data.first}');
+        }
         return data.cast<Map<String, dynamic>>();
       } else {
         throw Exception('Error al obtener vocabulario: ${response.body}');
       }
     } catch (e) {
-      debugPrint('Error en obtenerVocabulario: $e');
+      debugPrint('❌ Error en obtenerVocabulario: $e');
       return [];
     }
   }

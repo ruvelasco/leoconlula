@@ -70,7 +70,12 @@ class _VocabularioPageState extends State<VocabularioPage> {
 
   Future<List<Map<String, dynamic>>> _cargarVocabularioGuardado() async {
     // Usar DataService para que funcione tanto en local como en remoto
-    return await DataService.obtenerVocabulario(userId: widget.userId);
+    debugPrint('🔍 VOCABULARIO: Cargando vocabulario para usuario ${widget.userId}...');
+    debugPrint('🔍 VOCABULARIO: userId type: ${widget.userId.runtimeType}');
+    debugPrint('🔍 VOCABULARIO: useRemoteApi: ${DataService.useRemoteApi}');
+    final result = await DataService.obtenerVocabulario(userId: widget.userId);
+    debugPrint('📚 VOCABULARIO: Obtenido ${result.length} palabras');
+    return result;
   }
 
   Future<String> obtenerSilabas(String palabra) async {
