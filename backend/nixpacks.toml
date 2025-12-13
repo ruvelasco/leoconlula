@@ -1,6 +1,6 @@
-# Railway deployment configuration - ensures OpenSSL is available for Prisma
+# Railway deployment configuration - ensures OpenSSL 3.x is available for Prisma
 [phases.setup]
-nixPkgs = ['nodejs_20', 'openssl']
+nixPkgs = ['nodejs_20', 'openssl_3']
 
 [phases.install]
 cmds = ['npm ci']
