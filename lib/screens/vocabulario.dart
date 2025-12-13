@@ -2,16 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
+import 'dart:convert';
 import 'package:path/path.dart' as p;
 import 'package:leoconlula/widgets/avatar_usuario.dart';
-import 'dart:convert'; // Añade este import
-import 'package:leoconlula/helpers/db_helper.dart';
-
 import '../providers/arasaac_provider.dart';
 import '../widgets/target_card2.dart';
 import 'package:leoconlula/services/data_service.dart';
 import '../widgets/fondo_inicio.dart';
-import 'package:leoconlula/helpers/db_helper.dart';
 
 class VocabularioPage extends StatefulWidget {
   final int userId;
@@ -238,14 +235,23 @@ class _VocabularioPageState extends State<VocabularioPage> {
                             final item = vocabularioGuardado[realIndex];
                             final String label = item['label'] ?? '';
                             final String nombreImagen = item['nombreImagen'] ?? '';
-                            final String id = nombreImagen.split('.').first;
+
+                            // Si nombreImagen es una URL (modo remoto), usarla directamente
+                            // Si no, construir la URL desde el ID (modo local)
+                            String imageUrl;
+                            if (nombreImagen.startsWith('http://') || nombreImagen.startsWith('https://')) {
+                              imageUrl = nombreImagen;
+                            } else {
+                              final String id = nombreImagen.split('.').first;
+                              imageUrl = 'https://static.arasaac.org/pictograms/$id/${id}_300.png';
+                            }
 
                             return Padding(
                               padding: const EdgeInsets.symmetric(horizontal: 8),
                               child: Stack(
                                 children: [
                                   TargetCard2(
-                                    imageAsset: 'https://static.arasaac.org/pictograms/$id/${id}_300.png',
+                                    imageAsset: imageUrl,
                                     label: label,
                                   ),
                                   Positioned(
@@ -254,18 +260,24 @@ class _VocabularioPageState extends State<VocabularioPage> {
                                     child: IconButton(
                                       icon: const Icon(Icons.delete, color: Colors.red, size: 28),
                                       onPressed: () async {
-                                        final db = await DBHelper.database;
-                                        await db.delete(
-                                          'vocabulario',
-                                          where: 'nombreImagen = ? AND idUsuario = ?',
-                                          whereArgs: [nombreImagen, widget.userId],
-                                        );
-                                        final dir = await getApplicationDocumentsDirectory();
-                                        final file = File('${dir.path}/vocabulario/$nombreImagen');
-                                        if (await file.exists()) {
-                                          await file.delete();
+                                        final vocabId = item['id'];
+                                        if (vocabId != null) {
+                                          await DataService.eliminarVocabulario(vocabId);
+
+                                          // Si es modo local, eliminar también el archivo
+                                          if (!DataService.useRemoteApi) {
+                                            try {
+                                              final dir = await getApplicationDocumentsDirectory();
+                                              final file = File('${dir.path}/vocabulario/$nombreImagen');
+                                              if (await file.exists()) {
+                                                await file.delete();
+                                              }
+                                            } catch (e) {
+                                              debugPrint('Error al eliminar archivo: $e');
+                                            }
+                                          }
+                                          setState(() {});
                                         }
-                                        setState(() {});
                                       },
                                       tooltip: 'Eliminar',
                                     ),

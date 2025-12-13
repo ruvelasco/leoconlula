@@ -399,12 +399,7 @@ class _PrevioJuegoPageState extends State<PrevioJuegoPage> {
                                   height: 70,
                                   child: Padding(
                                     padding: const EdgeInsets.all(4),
-                                    child: Image.file(
-                                      File(
-                                        '${snapshot.data!.path}/vocabulario/$nombreImagen',
-                                      ),
-                                      fit: BoxFit.contain,
-                                    ),
+                                    child: _buildVocabularioImage(nombreImagen, snapshot.data!.path),
                                   ),
                                 ),
                               const SizedBox(height: 6),
@@ -602,5 +597,28 @@ class _PrevioJuegoPageState extends State<PrevioJuegoPage> {
       );
     }
     return botones;
+  }
+
+  /// Construye el widget de imagen según el tipo (URL o archivo local)
+  Widget _buildVocabularioImage(String nombreImagen, String appDocPath) {
+    // Si nombreImagen es una URL (modo remoto), usar Image.network
+    if (nombreImagen.startsWith('http://') || nombreImagen.startsWith('https://')) {
+      return Image.network(
+        nombreImagen,
+        fit: BoxFit.contain,
+        errorBuilder: (context, error, stackTrace) {
+          return const Icon(Icons.broken_image, size: 50);
+        },
+      );
+    } else {
+      // Si es modo local, usar Image.file
+      return Image.file(
+        File('$appDocPath/vocabulario/$nombreImagen'),
+        fit: BoxFit.contain,
+        errorBuilder: (context, error, stackTrace) {
+          return const Icon(Icons.broken_image, size: 50);
+        },
+      );
+    }
   }
 }
