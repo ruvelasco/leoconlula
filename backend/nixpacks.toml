@@ -1,3 +1,4 @@
+# Railway deployment configuration - ensures OpenSSL is available for Prisma
 [phases.setup]
 nixPkgs = ['nodejs_20', 'openssl']
 
