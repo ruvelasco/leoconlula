@@ -32,4 +32,4 @@ RUN npx prisma generate
 EXPOSE 8080
 
 # Start command
-CMD ["/bin/sh", "-c", "npx prisma db push && node dist/index.js"]
+CMD ["node", "dist/index.js"]
