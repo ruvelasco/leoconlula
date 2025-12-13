@@ -4,16 +4,63 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import { PrismaClient } from '@prisma/client';
 import dotenv from 'dotenv';
+import multer from 'multer';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import fs from 'fs';
 
 dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const prisma = new PrismaClient();
 
+// Configurar multer para almacenamiento de archivos
+const uploadsDir = path.join(__dirname, '../uploads');
+const avatarsDir = path.join(uploadsDir, 'avatars');
+const vocabularioDir = path.join(uploadsDir, 'vocabulario');
+
+// Crear directorios si no existen
+[uploadsDir, avatarsDir, vocabularioDir].forEach(dir => {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+});
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const type = req.query.type as string || 'avatar';
+    const dest = type === 'vocabulario' ? vocabularioDir : avatarsDir;
+    cb(null, dest);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB max
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = /jpeg|jpg|png|gif/;
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = allowedTypes.test(file.mimetype);
+    if (mimetype && extname) {
+      return cb(null, true);
+    }
+    cb(new Error('Solo se permiten imágenes (jpeg, jpg, png, gif)'));
+  }
+});
+
 app.use(helmet());
 app.use(cors());
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(morgan('combined'));
+app.use('/uploads', express.static(uploadsDir));
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 8080;
 
@@ -53,6 +100,80 @@ app.patch('/usuarios/:id/campos', async (req, res) => {
   const id = Number(req.params.id);
   try {
     const user = await prisma.usuario.update({ where: { id }, data: req.body });
+    res.json(user);
+  } catch (err) {
+    res.status(400).json({ error: (err as Error).message });
+  }
+});
+
+app.get('/usuarios/:id/orden-actividades', async (req, res) => {
+  const id = Number(req.params.id);
+  try {
+    const user = await prisma.usuario.findUnique({
+      where: { id },
+      select: { orden_actividades: true }
+    });
+    const orden = user?.orden_actividades?.split(',') || [
+      'aprendizaje',
+      'discriminacion',
+      'discriminacion_inversa',
+      'silabas',
+      'arrastre',
+      'doble',
+      'silabas_orden',
+      'silabas_distrac'
+    ];
+    res.json(orden);
+  } catch (err) {
+    res.status(400).json({ error: (err as Error).message });
+  }
+});
+
+app.patch('/usuarios/:id/orden-actividades', async (req, res) => {
+  const id = Number(req.params.id);
+  const { orden } = req.body; // Array de strings
+  try {
+    const user = await prisma.usuario.update({
+      where: { id },
+      data: { orden_actividades: orden.join(',') }
+    });
+    res.json(user);
+  } catch (err) {
+    res.status(400).json({ error: (err as Error).message });
+  }
+});
+
+app.get('/usuarios/:id/actividades-habilitadas', async (req, res) => {
+  const id = Number(req.params.id);
+  try {
+    const user = await prisma.usuario.findUnique({
+      where: { id },
+      select: { actividades_habilitadas: true }
+    });
+    const habilitadas = user?.actividades_habilitadas?.split(',') || [
+      'aprendizaje',
+      'discriminacion',
+      'discriminacion_inversa',
+      'silabas',
+      'arrastre',
+      'doble',
+      'silabas_orden',
+      'silabas_distrac'
+    ];
+    res.json(habilitadas);
+  } catch (err) {
+    res.status(400).json({ error: (err as Error).message });
+  }
+});
+
+app.patch('/usuarios/:id/actividades-habilitadas', async (req, res) => {
+  const id = Number(req.params.id);
+  const { actividades } = req.body; // Array de strings
+  try {
+    const user = await prisma.usuario.update({
+      where: { id },
+      data: { actividades_habilitadas: actividades.join(',') }
+    });
     res.json(user);
   } catch (err) {
     res.status(400).json({ error: (err as Error).message });
@@ -174,6 +295,55 @@ app.delete('/sesiones', async (req, res) => {
     await prisma.sesionVocabulario.deleteMany({ where: { sesion: userId ? { userId } : undefined } });
     await prisma.actividadSesion.deleteMany({ where: userId ? { userId } : {} });
     res.status(204).send();
+  } catch (err) {
+    res.status(400).json({ error: (err as Error).message });
+  }
+});
+
+// Upload de archivos
+app.post('/upload', upload.single('file'), (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No se subió ningún archivo' });
+    }
+    const type = req.query.type as string || 'avatar';
+    const baseUrl = process.env.BASE_URL || `http://localhost:${PORT}`;
+    const fileUrl = `${baseUrl}/uploads/${type === 'vocabulario' ? 'vocabulario' : 'avatars'}/${req.file.filename}`;
+    res.json({
+      filename: req.file.filename,
+      url: fileUrl,
+      size: req.file.size,
+      mimetype: req.file.mimetype
+    });
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
+// Get sesiones con filtros
+app.get('/sesiones', async (req, res) => {
+  try {
+    const { userId, actividad } = req.query;
+    const where: any = {};
+    if (userId) where.userId = Number(userId);
+    if (actividad) where.actividad = actividad as string;
+
+    const sesiones = await prisma.actividadSesion.findMany({
+      where,
+      include: {
+        detalles: true,
+        user: {
+          select: {
+            id: true,
+            nombre: true
+          }
+        }
+      },
+      orderBy: {
+        inicio_at: 'desc'
+      }
+    });
+    res.json(sesiones);
   } catch (err) {
     res.status(400).json({ error: (err as Error).message });
   }
