@@ -5,11 +5,12 @@ import 'package:leoconlula/widgets/fondo.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:leoconlula/widgets/target_card.dart';
 import 'package:leoconlula/widgets/word_widget.dart';
-import 'package:leoconlula/helpers/db_helper.dart';
+import 'package:leoconlula/services/data_service.dart';
 import 'package:leoconlula/widgets/barra_progreso.dart';
 import 'package:leoconlula/widgets/avatar_usuario.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:leoconlula/widgets/refuerzo.dart';
+import 'package:leoconlula/helpers/db_helper.dart';
 
 class DiscriminacionInversa extends StatefulWidget {
   const DiscriminacionInversa({super.key});
@@ -61,14 +62,14 @@ class _DiscriminacionInversaState extends State<DiscriminacionInversa> {
   }
 
   Future<void> _cargarRepeticiones() async {
-    final rep = await DBHelper.obtenerNumeroRepeticiones();
+    final rep = await DataService.obtenerNumeroRepeticiones();
     setState(() {
       maxAciertos = rep;
     });
   }
 
   Future<void> _cargarPalabras() async {
-    final vocabularioRaw = await DBHelper.obtenerVocabulario();
+    final vocabularioRaw = await DataService.obtenerVocabulario();
     final vocabulario = vocabularioRaw.map((e) => Map<String, dynamic>.from(e)).toList();
 
     if (vocabulario.length < 2) {
@@ -280,7 +281,7 @@ class _DiscriminacionInversaState extends State<DiscriminacionInversa> {
     if (_sesionId != null) return;
     _userId ??= await _resolverUserId();
     if (_userId == null) return;
-    _sesionId = await DBHelper.crearSesionActividad(
+    _sesionId = await DataService.crearSesionActividad(
       userId: _userId!,
       actividad: 'discriminacion_inversa',
       inicio: DateTime.now(),
@@ -297,7 +298,7 @@ class _DiscriminacionInversaState extends State<DiscriminacionInversa> {
 
   Future<void> _cerrarSesion({String? resultado}) async {
     if (_sesionId == null) return;
-    await DBHelper.finalizarSesionActividad(
+    await DataService.finalizarSesionActividad(
       _sesionId!,
       fin: DateTime.now(),
       aciertos: aciertos,

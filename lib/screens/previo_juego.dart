@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
-import 'package:leoconlula/helpers/db_helper.dart';
+import 'package:leoconlula/services/data_service.dart';
 import 'package:flutter/material.dart';
 import 'package:leoconlula/widgets/fondo.dart';
 import 'discriminacion.dart';
@@ -13,6 +13,7 @@ import '../screens/dos_imagenes_arrastre.dart' as doble_arrastre;
 import '../screens/silabas_orden.dart';
 import '../screens/silabas_orden_distraccion.dart';
 import 'package:carousel_slider/carousel_slider.dart';
+import 'package:leoconlula/helpers/db_helper.dart';
 
 class PrevioJuegoPage extends StatefulWidget {
   final int userId;
@@ -82,8 +83,8 @@ class _PrevioJuegoPageState extends State<PrevioJuegoPage> {
   }
 
   Future<void> _cargarConfiguracionActividades() async {
-    final orden = await DBHelper.obtenerOrdenActividades(widget.userId);
-    final habilitadas = await DBHelper.obtenerActividadesHabilitadas(widget.userId);
+    final orden = await DataService.obtenerOrdenActividades(widget.userId);
+    final habilitadas = await DataService.obtenerActividadesHabilitadas(widget.userId);
     print('🔧 Orden cargado: $orden');
     print('🔧 Habilitadas cargadas: $habilitadas');
     setState(() {

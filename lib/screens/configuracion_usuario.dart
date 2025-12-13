@@ -3,8 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import '../widgets/fondo_inicio.dart';
-import '../helpers/db_helper.dart';
+import 'package:leoconlula/services/data_service.dart';
 import 'vocabulario.dart';
+import 'package:leoconlula/helpers/db_helper.dart';
 
 class ConfiguracionUsuarioPage extends StatefulWidget {
   const ConfiguracionUsuarioPage({super.key});
@@ -60,14 +61,14 @@ class _ConfiguracionUsuarioPageState extends State<ConfiguracionUsuarioPage> {
 
   Future<void> _cargarConfiguracionUsuario() async {
     // Obtén el usuario actual de la BD (aquí se asume el primero)
-    final usuarios = await DBHelper.obtenerUsuarios();
+    final usuarios = await DataService.obtenerUsuarios();
     if (usuarios.isNotEmpty) {
       final usuario = usuarios.first;
       final id = usuario['id'] as int;
 
       // Cargar orden y actividades habilitadas
-      final orden = await DBHelper.obtenerOrdenActividades(id);
-      final habilitadas = await DBHelper.obtenerActividadesHabilitadas(id);
+      final orden = await DataService.obtenerOrdenActividades(id);
+      final habilitadas = await DataService.obtenerActividadesHabilitadas(id);
 
       setState(() {
         userId = id;
@@ -97,7 +98,7 @@ class _ConfiguracionUsuarioPageState extends State<ConfiguracionUsuarioPage> {
     setState(() {
       config[key] = !(config[key] ?? false);
     });
-    await DBHelper.actualizarCampoUsuarioBool(userId, key, config[key]!);
+    await DataService.actualizarCampoUsuarioBool(userId, key, config[key]!);
   }
 
   Future<void> _mostrarSelectorFuente() async {
@@ -265,12 +266,12 @@ class _ConfiguracionUsuarioPageState extends State<ConfiguracionUsuarioPage> {
                 TextButton(
                   onPressed: () async {
                     // Guardar orden y actividades habilitadas
-                    await DBHelper.guardarOrdenActividades(userId, ordenActividades);
+                    await DataService.guardarOrdenActividades(userId, ordenActividades);
                     final habilitadas = actividadesHabilitadas.entries
                         .where((e) => e.value)
                         .map((e) => e.key)
                         .toList();
-                    await DBHelper.guardarActividadesHabilitadas(userId, habilitadas);
+                    await DataService.guardarActividadesHabilitadas(userId, habilitadas);
                     if (!context.mounted) return;
                     Navigator.of(context).pop();
                   },
@@ -504,7 +505,7 @@ class _ConfiguracionUsuarioPageState extends State<ConfiguracionUsuarioPage> {
                                     ),
                               );
                               if (confirm == true) {
-                                await DBHelper.borrarSesionesUsuario(userId);
+                                await DataService.borrarSesionesUsuario(userId);
                                 if (!context.mounted) return;
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
@@ -551,7 +552,7 @@ class _ConfiguracionUsuarioPageState extends State<ConfiguracionUsuarioPage> {
                                     ),
                               );
                               if (confirm == true) {
-                                await DBHelper.eliminarUsuario(userId);
+                                await DataService.eliminarUsuario(userId);
                                 if (!context.mounted) return;
                                 Navigator.of(context).pushNamedAndRemoveUntil(
                                   '/splash',
@@ -650,7 +651,7 @@ class _ConfiguracionUsuarioPageState extends State<ConfiguracionUsuarioPage> {
                       const SizedBox(height: 10),
                       // Nombre de usuario debajo del avatar
                       FutureBuilder<List<Map<String, dynamic>>>(
-                        future: DBHelper.obtenerUsuarios(),
+                        future: DataService.obtenerUsuarios(),
                         builder: (context, snapshot) {
                           String nombre = '';
                           if (snapshot.hasData && snapshot.data!.isNotEmpty) {

@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:leoconlula/widgets/fondo_principal.dart';
-import 'package:leoconlula/helpers/db_helper.dart';
+import 'package:leoconlula/services/data_service.dart';
 import 'package:leoconlula/screens/previo_juego.dart';
 
 class PrincipalPage extends StatefulWidget {
@@ -22,14 +22,14 @@ class _PrincipalPageState extends State<PrincipalPage> {
   }
 
   Future<void> _loadUsers() async {
-    final users = await DBHelper.obtenerUsuarios();
+    final users = await DataService.obtenerUsuarios();
     setState(() {
       _users = users;
     });
   }
 
   Future<void> _addUser(String name, String photo) async {
-    await DBHelper.insertarUsuario(name, photo);
+    await DataService.insertarUsuario(name, photo);
     _loadUsers();
   }
 
@@ -276,8 +276,20 @@ class _PrincipalPageState extends State<PrincipalPage> {
   }
 
   Future<Widget> _buildUserAvatar(String imagePath) async {
+    // Si la imagen es una URL (empieza con http), usarla directamente (modo remoto)
+    if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+      return CircleAvatar(
+        radius: 59,
+        backgroundColor: const Color.fromRGBO(63, 46, 31, 1),
+        child: CircleAvatar(
+          radius: 55,
+          backgroundImage: NetworkImage(imagePath),
+        ),
+      );
+    }
+
+    // Si es una imagen de assets (no termina en .png o es un nombre especial)
     if (imagePath.isNotEmpty && !imagePath.endsWith('.png')) {
-      // Si es una imagen de assets antigua
       return CircleAvatar(
         radius: 59,
         backgroundColor: const Color.fromRGBO(63, 46, 31, 1),
@@ -287,6 +299,8 @@ class _PrincipalPageState extends State<PrincipalPage> {
         ),
       );
     }
+
+    // Intentar cargar desde documentos (modo local)
     try {
       final dir = await getApplicationDocumentsDirectory();
       final file = File('${dir.path}/$imagePath');
@@ -300,7 +314,8 @@ class _PrincipalPageState extends State<PrincipalPage> {
     } catch (e) {
       debugPrint('Error al cargar imagen de usuario: $e');
     }
-    // Si no existe la imagen en documentos, usa la de assets por defecto
+
+    // Si no se encuentra, usar la imagen por defecto de assets
     return CircleAvatar(
       radius: 59,
       backgroundColor: const Color.fromRGBO(63, 46, 31, 1),

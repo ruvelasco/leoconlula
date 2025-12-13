@@ -5,12 +5,13 @@ import '/widgets/fondo.dart';
 import 'dart:math';
 import 'package:confetti/confetti.dart';
 import 'package:audioplayers/audioplayers.dart';
-import 'package:leoconlula/helpers/db_helper.dart';
+import 'package:leoconlula/services/data_service.dart';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:leoconlula/widgets/barra_progreso.dart';
 import 'package:leoconlula/widgets/avatar_usuario.dart';
 import 'package:leoconlula/widgets/refuerzo.dart';
+import 'package:leoconlula/services/data_service.dart';
 import 'package:leoconlula/helpers/db_helper.dart';
 
 class DemoDragTarget extends StatefulWidget {
@@ -60,7 +61,7 @@ class _DemoDragTargetState extends State<DemoDragTarget> {
   }
 
   Future<void> _cargarPalabras() async {
-    final vocabulario = await DBHelper.obtenerVocabulario();
+    final vocabulario = await DataService.obtenerVocabulario();
     List<Map<String, String>> todas = vocabulario
         .map<Map<String, String>>((item) => {
               'label': item['label'] as String,
@@ -315,7 +316,7 @@ class _DemoDragTargetState extends State<DemoDragTarget> {
   }
 
   Future<void> _cargarRepeticiones() async {
-    final rep = await DBHelper.obtenerNumeroRepeticiones();
+    final rep = await DataService.obtenerNumeroRepeticiones();
     setState(() {
       maxAciertos = rep;
     });
@@ -326,7 +327,7 @@ class _DemoDragTargetState extends State<DemoDragTarget> {
     _userId ??= await _resolverUserId();
     if (_userId == null) return;
     final palabras = tarjetas.map((e) => e['label'] ?? '').where((e) => e.isNotEmpty).take(3).toList();
-    _sesionId = await DBHelper.crearSesionActividad(
+    _sesionId = await DataService.crearSesionActividad(
       userId: _userId!,
       actividad: 'discriminacion',
       inicio: DateTime.now(),
@@ -343,7 +344,7 @@ class _DemoDragTargetState extends State<DemoDragTarget> {
 
   Future<void> _cerrarSesion({String? resultado}) async {
     if (_sesionId == null) return;
-    await DBHelper.finalizarSesionActividad(
+    await DataService.finalizarSesionActividad(
       _sesionId!,
       fin: DateTime.now(),
       aciertos: aciertos,

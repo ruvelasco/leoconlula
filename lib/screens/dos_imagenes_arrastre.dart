@@ -1,13 +1,14 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:leoconlula/helpers/db_helper.dart';
+import 'package:leoconlula/services/data_service.dart';
 import 'package:leoconlula/widgets/fondo.dart';
 import 'package:leoconlula/widgets/barra_progreso.dart';
 import 'package:leoconlula/widgets/avatar_usuario.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:leoconlula/widgets/target_vacia.dart'; // O TargetCardSinImagen
 import 'package:confetti/confetti.dart';
+import 'package:leoconlula/helpers/db_helper.dart';
 
 class DobleArrastrePage extends StatefulWidget {
   const DobleArrastrePage({super.key});
@@ -51,7 +52,7 @@ class _DobleArrastrePageState extends State<DobleArrastrePage> {
   }
 
   Future<void> _cargarRepeticiones() async {
-    final rep = await DBHelper.obtenerNumeroRepeticiones();
+    final rep = await DataService.obtenerNumeroRepeticiones();
     setState(() {
       maxAciertos = rep;
     });
@@ -286,7 +287,7 @@ class _DobleArrastrePageState extends State<DobleArrastrePage> {
     if (_sesionId != null) return;
     _userId ??= await _resolverUserId();
     if (_userId == null) return;
-    _sesionId = await DBHelper.crearSesionActividad(
+    _sesionId = await DataService.crearSesionActividad(
       userId: _userId!,
       actividad: 'doble',
       inicio: DateTime.now(),
@@ -303,7 +304,7 @@ class _DobleArrastrePageState extends State<DobleArrastrePage> {
 
   Future<void> _cerrarSesion({String? resultado}) async {
     if (_sesionId == null) return;
-    await DBHelper.finalizarSesionActividad(
+    await DataService.finalizarSesionActividad(
       _sesionId!,
       fin: DateTime.now(),
       aciertos: aciertos,

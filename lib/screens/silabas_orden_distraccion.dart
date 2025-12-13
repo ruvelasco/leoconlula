@@ -2,10 +2,11 @@ import 'package:confetti/confetti.dart';
 import 'package:flutter/material.dart';
 import 'package:leoconlula/widgets/fondo.dart';
 import 'package:leoconlula/widgets/target_silabas.dart';
-import 'package:leoconlula/helpers/db_helper.dart';
+import 'package:leoconlula/services/data_service.dart';
 import 'package:leoconlula/widgets/barra_progreso.dart';
 import 'package:leoconlula/widgets/avatar_usuario.dart';
 import 'package:leoconlula/widgets/refuerzo.dart';
+import 'package:leoconlula/helpers/db_helper.dart';
 
 class SilabasOrdenDistraccionPage extends StatefulWidget {
   const SilabasOrdenDistraccionPage({super.key});
@@ -69,7 +70,7 @@ class _SilabasOrdenDistraccionPageState extends State<SilabasOrdenDistraccionPag
   }
 
   Future<void> _cargarRepeticiones() async {
-    final rep = await DBHelper.obtenerNumeroRepeticiones();
+    final rep = await DataService.obtenerNumeroRepeticiones();
     setState(() {
       maxAciertos = rep;
     });
@@ -278,7 +279,7 @@ class _SilabasOrdenDistraccionPageState extends State<SilabasOrdenDistraccionPag
     if (_sesionId != null) return;
     _userId ??= await _resolverUserId();
     if (_userId == null) return;
-    _sesionId = await DBHelper.crearSesionActividad(
+    _sesionId = await DataService.crearSesionActividad(
       userId: _userId!,
       actividad: 'silabas_distrac',
       inicio: DateTime.now(),
@@ -295,7 +296,7 @@ class _SilabasOrdenDistraccionPageState extends State<SilabasOrdenDistraccionPag
 
   Future<void> _cerrarSesion({String? resultado}) async {
     if (_sesionId == null) return;
-    await DBHelper.finalizarSesionActividad(
+    await DataService.finalizarSesionActividad(
       _sesionId!,
       fin: DateTime.now(),
       aciertos: aciertos,

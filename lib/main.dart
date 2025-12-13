@@ -18,7 +18,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Drag & Drop Integrado',
+      title: 'Leo Con Lula',
       debugShowCheckedModeBanner: false, // Elimina la marca de debug
       home: const SplashScreen(), // Usa la pantalla de splash como inicial
       routes: {
@@ -28,4 +28,3 @@ class MyApp extends StatelessWidget {
     );
   }
 }
-

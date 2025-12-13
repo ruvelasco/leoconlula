@@ -5,11 +5,13 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:leoconlula/widgets/avatar_usuario.dart';
 import 'dart:convert'; // Añade este import
+import 'package:leoconlula/helpers/db_helper.dart';
 
 import '../providers/arasaac_provider.dart';
 import '../widgets/target_card2.dart';
-import '../helpers/db_helper.dart';
+import 'package:leoconlula/services/data_service.dart';
 import '../widgets/fondo_inicio.dart';
+import 'package:leoconlula/helpers/db_helper.dart';
 
 class VocabularioPage extends StatefulWidget {
   final int userId;
@@ -38,6 +40,19 @@ class _VocabularioPageState extends State<VocabularioPage> {
 
   Future<void> guardarImagenEnDocumentos(String url, String nombreArchivo, String label) async {
     try {
+      // 1. Consultar las sílabas antes de guardar
+      final silabas = await obtenerSilabas(label);
+
+      // 2. Si estamos en modo API remoto, guardar la URL directamente
+      if (DataService.useRemoteApi) {
+        debugPrint('📤 Modo remoto: Guardando URL de imagen directamente');
+        await DataService.insertarVocabulario(url, label, widget.userId, silabas: silabas);
+        setState(() {});
+        return;
+      }
+
+      // 3. Si estamos en modo local, descargar la imagen
+      debugPrint('📥 Modo local: Descargando imagen...');
       final dir = await getApplicationDocumentsDirectory();
       final vocabularioDir = Directory(p.join(dir.path, 'vocabulario'));
       if (!await vocabularioDir.exists()) {
@@ -46,15 +61,12 @@ class _VocabularioPageState extends State<VocabularioPage> {
       final path = p.join(vocabularioDir.path, nombreArchivo);
       await Dio().download(url, path);
 
-      // 1. Consultar las sílabas antes de guardar
-      final silabas = await obtenerSilabas(label);
-
-      // 2. Guardar en la base de datos usando el userId recibido y las sílabas
-      await DBHelper.insertarVocabulario(nombreArchivo, label, widget.userId, silabas: silabas);
+      // 4. Guardar en la base de datos local
+      await DataService.insertarVocabulario(nombreArchivo, label, widget.userId, silabas: silabas);
 
       setState(() {}); // Esto recarga el FutureBuilder y actualiza el listado
     } catch (e) {
-      debugPrint('Error al descargar imagen de vocabulario: $e');
+      debugPrint('Error al guardar imagen de vocabulario: $e');
       rethrow;
     }
   }

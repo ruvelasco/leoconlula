@@ -7,10 +7,11 @@ import 'package:leoconlula/widgets/barra_progreso.dart';
 import 'package:leoconlula/widgets/avatar_usuario.dart';
 import 'package:leoconlula/widgets/fondo.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:leoconlula/helpers/db_helper.dart';
+import 'package:leoconlula/services/data_service.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:dotted_border/dotted_border.dart';
 import 'package:confetti/confetti.dart';
+import 'package:leoconlula/helpers/db_helper.dart';
 
 class AprendizajePage extends StatefulWidget {
   final int? userId;
@@ -151,12 +152,12 @@ class _AprendizajePageState extends State<AprendizajePage> with SingleTickerProv
     final uid = await _resolverUserId();
     if (uid == null) return;
     _inicioSesion = DateTime.now();
-    final repeticiones = await DBHelper.obtenerNumeroRepeticiones(userId: uid);
+    final repeticiones = await DataService.obtenerNumeroRepeticiones(userId: uid);
     setState(() {
       maxAciertos = repeticiones;
     });
     final palabrasSesion = await _obtenerPalabrasSesion(uid);
-    final id = await DBHelper.crearSesionActividad(
+    final id = await DataService.crearSesionActividad(
       userId: uid,
       actividad: 'aprendizaje',
       inicio: _inicioSesion,
@@ -182,7 +183,7 @@ class _AprendizajePageState extends State<AprendizajePage> with SingleTickerProv
 
   Future<void> _cerrarSesion({String? resultado}) async {
     if (_sesionId == null) return;
-    await DBHelper.finalizarSesionActividad(
+    await DataService.finalizarSesionActividad(
       _sesionId!,
       fin: DateTime.now(),
       aciertos: aciertos,
@@ -269,7 +270,7 @@ class _AprendizajePageState extends State<AprendizajePage> with SingleTickerProv
     final vocabId = palabraData?['id'] as int?;
     final tiempoMs =
         _inicioPalabra != null ? DateTime.now().difference(_inicioPalabra!).inMilliseconds : null;
-    await DBHelper.registrarDetalleVocabulario(
+    await DataService.registrarDetalleVocabulario(
       sesionId: _sesionId!,
       vocabularioId: vocabId,
       mostrada: true,

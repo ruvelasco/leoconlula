@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:leoconlula/helpers/db_helper.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:leoconlula/helpers/db_helper.dart';
 
 class AvatarUsuario extends StatelessWidget {
   final int? userId; // Si quieres filtrar por usuario concreto, si no, déjalo null
