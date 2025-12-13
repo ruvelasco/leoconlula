@@ -1,6 +1,5 @@
-# Railway deployment configuration - ensures OpenSSL 3.x is available for Prisma
 [phases.setup]
-nixPkgs = ['nodejs_20', 'openssl_3']
+nixPkgs = ['nodejs_20', 'openssl']
 
 [phases.install]
 cmds = ['npm ci']
@@ -9,4 +8,4 @@ cmds = ['npm ci']
 cmds = ['npm run build', 'npx prisma generate']
 
 [start]
-cmd = 'npx prisma db push && node dist/index.js'
+cmd = 'node dist/index.js'
