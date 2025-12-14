@@ -561,12 +561,8 @@ class _PrevioJuegoPageState extends State<PrevioJuegoPage> {
           ? true
           : (actividadesCompletadas[actividadesAMostrar[i - 1]] ?? false);
 
-      // Solo habilitar si:
-      // 1. Es la tarjeta actual
-      // 2. El bloque anterior está completo
-      // 3. La actividad previa está completa
-      final estaHabilitado =
-          esTarjetaActual && bloqueAnteriorCompletado && previaCompletada;
+      // TODAS LAS ACTIVIDADES ABIERTAS (sin restricciones)
+      final estaHabilitado = true;
 
       print('🔍 Actividad $i: $clave');
       print('   - Es tarjeta actual: $esTarjetaActual');
