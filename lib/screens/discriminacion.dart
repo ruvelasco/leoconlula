@@ -15,7 +15,9 @@ import 'package:leoconlula/services/data_service.dart';
 import 'package:leoconlula/helpers/db_helper.dart';
 
 class DemoDragTarget extends StatefulWidget {
-  const DemoDragTarget({super.key});
+  final int? userId;
+
+  const DemoDragTarget({super.key, this.userId});
 
   @override
   State<DemoDragTarget> createState() => _DemoDragTargetState();
@@ -61,7 +63,7 @@ class _DemoDragTargetState extends State<DemoDragTarget> {
   }
 
   Future<void> _cargarPalabras() async {
-    _userId ??= await _resolverUserId();
+    _userId = widget.userId ?? await _resolverUserId();
     debugPrint('🔍 DISCRIMINACION: Cargando vocabulario para usuario $_userId');
 
     final vocabulario = await DataService.obtenerVocabulario(userId: _userId);

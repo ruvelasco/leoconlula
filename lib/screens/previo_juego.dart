@@ -499,7 +499,7 @@ class _PrevioJuegoPageState extends State<PrevioJuegoPage> {
       'discriminacion': (
         titulo: 'DISCRIMINACIÓN',
         icono: Icons.compare_arrows,
-        builder: () => DemoDragTarget(key: UniqueKey()),
+        builder: () => DemoDragTarget(key: UniqueKey(), userId: widget.userId),
       ),
       'discriminacion_inversa': (
         titulo: 'DISC. INVERSA',
