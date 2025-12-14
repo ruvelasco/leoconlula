@@ -590,7 +590,7 @@ class _PrevioJuegoPageState extends State<PrevioJuegoPage> {
                   ).then((_) => _cargarProgresoActividades())
               : null,
           iconSize: 84,
-          textSize: 24R,
+          textSize: 24,
           habilitado: estaHabilitado,
         ),
       );
