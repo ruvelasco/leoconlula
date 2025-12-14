@@ -499,37 +499,37 @@ class _PrevioJuegoPageState extends State<PrevioJuegoPage> {
       'discriminacion': (
         titulo: 'DISCRIMINACIÓN',
         icono: Icons.compare_arrows,
-        builder: () => const DemoDragTarget(),
+        builder: () => DemoDragTarget(),
       ),
       'discriminacion_inversa': (
         titulo: 'DISC. INVERSA',
         icono: Icons.swap_horiz,
-        builder: () => const DiscriminacionInversa(),
+        builder: () => DiscriminacionInversa(),
       ),
       'silabas': (
         titulo: 'SÍLABAS',
         icono: Icons.text_fields,
-        builder: () => const SilabasPage(),
+        builder: () => SilabasPage(),
       ),
       'arrastre': (
         titulo: 'ARRASTRE',
         icono: Icons.touch_app,
-        builder: () => const ImagenArrastrePage(),
+        builder: () => ImagenArrastrePage(),
       ),
       'doble': (
         titulo: 'DOBLE',
         icono: Icons.format_list_bulleted,
-        builder: () => const doble_arrastre.DobleArrastrePage(),
+        builder: () => doble_arrastre.DobleArrastrePage(),
       ),
       'silabas_orden': (
         titulo: 'S. ORDEN',
         icono: Icons.sort,
-        builder: () => const SilabasOrdenPage(),
+        builder: () => SilabasOrdenPage(),
       ),
       'silabas_distrac': (
         titulo: 'S. DISTRAC.',
         icono: Icons.psychology,
-        builder: () => const SilabasOrdenDistraccionPage(),
+        builder: () => SilabasOrdenDistraccionPage(),
       ),
     };
 
