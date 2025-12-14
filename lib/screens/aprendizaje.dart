@@ -324,16 +324,17 @@ class _AprendizajePageState extends State<AprendizajePage> with SingleTickerProv
   }
 
   Future<void> _cargarPalabra() async {
-    final db = await DBHelper.database;
     _userId ??= await _resolverUserId();
-    final resultado = await db.query(
-      'vocabulario',
-      where: _userId != null ? 'idUsuario = ?' : null,
-      whereArgs: _userId != null ? [_userId] : null,
-      orderBy: 'id ASC',
-    );
 
-    if (resultado.isEmpty) return;
+    // Usar DataService en lugar de acceso directo a la BD
+    debugPrint('🔍 APRENDIZAJE: Cargando vocabulario para usuario $_userId');
+    final resultado = await DataService.obtenerVocabulario(userId: _userId);
+    debugPrint('📚 APRENDIZAJE: ${resultado.length} palabras cargadas');
+
+    if (resultado.isEmpty) {
+      debugPrint('⚠️ APRENDIZAJE: No hay vocabulario disponible');
+      return;
+    }
     _vocabularioCache = resultado;
 
     final seleccion = _seleccionarPalabra();
@@ -342,8 +343,16 @@ class _AprendizajePageState extends State<AprendizajePage> with SingleTickerProv
     final nombreImagen = (seleccion['nombreImagen'] ?? '') as String;
     ImageProvider? nuevaImagen;
     if (nombreImagen.isNotEmpty) {
-      final docDir = await getApplicationDocumentsDirectory();
-      nuevaImagen = FileImage(File('${docDir.path}/vocabulario/$nombreImagen'));
+      try {
+        String? localPath;
+        if (!DataService.useRemoteApi) {
+          final docDir = await getApplicationDocumentsDirectory();
+          localPath = docDir.path;
+        }
+        nuevaImagen = await DataService.obtenerImageProvider(nombreImagen, localPath: localPath);
+      } catch (e) {
+        debugPrint('❌ APRENDIZAJE: Error obteniendo ImageProvider: $e');
+      }
     }
     setState(() {
       palabraData = seleccion;
@@ -458,15 +467,14 @@ class _AprendizajePageState extends State<AprendizajePage> with SingleTickerProv
         alignment: Alignment.center,
         children: [
           BackgroundContainer(
-            child: FutureBuilder<Directory>(
-              future: getApplicationDocumentsDirectory(),
-              builder: (context, snapshot) {
-                if (!snapshot.hasData || palabraData == null) return const SizedBox();
-                final nombreImagen = palabraData!['nombreImagen'] ?? '';
-                final palabra = palabraData!['label'] ?? '';
-                final Color bordeTransparente = Colors.transparent;
-                return LayoutBuilder(
+            child: palabraData == null
+              ? const Center(child: CircularProgressIndicator())
+              : LayoutBuilder(
                   builder: (context, constraints) {
+                    final nombreImagen = palabraData!['nombreImagen'] ?? '';
+                    final palabra = palabraData!['label'] ?? '';
+                    final Color bordeTransparente = Colors.transparent;
+
                     return SingleChildScrollView(
                       padding: const EdgeInsets.symmetric(vertical: 20),
                       child: ConstrainedBox(
@@ -565,9 +573,7 @@ class _AprendizajePageState extends State<AprendizajePage> with SingleTickerProv
                       ),
                     );
                   },
-                );
-              },
-            ),
+                ),
           ),
           ConfettiWidget(
             confettiController: _confettiController,

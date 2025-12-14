@@ -59,8 +59,12 @@ class _DobleArrastrePageState extends State<DobleArrastrePage> {
   }
 
   Future<void> _cargarPalabras() async {
-    final db = await DBHelper.database;
-    final resultado = await db.query('vocabulario');
+    _userId ??= await _resolverUserId();
+    debugPrint('🔍 DOBLE_ARRASTRE: Cargando vocabulario para usuario $_userId');
+
+    final resultado = await DataService.obtenerVocabulario(userId: _userId);
+    debugPrint('📚 DOBLE_ARRASTRE: ${resultado.length} palabras cargadas');
+
     final listaMutable = List<Map<String, dynamic>>.from(resultado);
     listaMutable.shuffle();
     await _iniciarSesionSiNoExiste(
@@ -129,6 +133,37 @@ class _DobleArrastrePageState extends State<DobleArrastrePage> {
     }
   }
 
+  Widget _buildImageSmart(String nombreImagen, {double width = 150, double height = 150}) {
+    // Si nombreImagen es una URL, usar Image.network directamente
+    if (nombreImagen.startsWith('http://') || nombreImagen.startsWith('https://')) {
+      return Image.network(
+        nombreImagen,
+        width: width,
+        height: height,
+        fit: BoxFit.contain,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return const CircularProgressIndicator();
+        },
+      );
+    } else {
+      // Para modo local, usar FutureBuilder solo para esta imagen
+      return FutureBuilder<Directory>(
+        future: getApplicationDocumentsDirectory(),
+        builder: (context, snapshot) {
+          if (snapshot.hasError) return const Icon(Icons.error);
+          if (!snapshot.hasData) return const CircularProgressIndicator();
+          return Image.file(
+            File('${snapshot.data!.path}/vocabulario/$nombreImagen'),
+            width: width,
+            height: height,
+            fit: BoxFit.contain,
+          );
+        },
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (palabras.length < 2) {
@@ -160,105 +195,84 @@ class _DobleArrastrePageState extends State<DobleArrastrePage> {
           BackgroundContainer(
             child: Padding(
               padding: const EdgeInsets.all(24),
-              child: FutureBuilder<Directory>(
-                future: getApplicationDocumentsDirectory(),
-                builder: (context, snapshot) {
-                  if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-                  final docPath = snapshot.data!.path;
-                  return Column(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  BarraProgreso(aciertos: aciertos, maxAciertos: maxAciertos),
+                  const SizedBox(height: 32),
+                  Row(
                     mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      BarraProgreso(aciertos: aciertos, maxAciertos: maxAciertos),
-                      const SizedBox(height: 32),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: List.generate(2, (i) {
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            child: TargetCardSinImagen(
-                              label: palabras[i]['label'] ?? '',
-                              acierto: aciertosZona[i],
-                              droppedChild: imagenesAcertadas[i] != null
-                                  ? Image.file(
-                                      File('$docPath/vocabulario/${imagenesAcertadas[i]}'),
-                                      width: 140,
-                                      height: 140,
-                                      fit: BoxFit.contain,
-                                    )
-                                  : null,
-                              onAccept: (data) => _onAccept(i, data),
+                    children: List.generate(2, (i) {
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: TargetCardSinImagen(
+                          label: palabras[i]['label'] ?? '',
+                          acierto: aciertosZona[i],
+                          droppedChild: imagenesAcertadas[i] != null
+                              ? _buildImageSmart(imagenesAcertadas[i]!, width: 140, height: 140)
+                              : null,
+                          onAccept: (data) => _onAccept(i, data),
+                        ),
+                      );
+                    }),
+                  ),
+                  const SizedBox(height: 40),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: imagenes.map((palabra) {
+                      final nombreImagen = palabra['nombreImagen'];
+                      if (imagenAcertada(nombreImagen)) {
+                        return const SizedBox(width: 150, height: 150);
+                      }
+                      final estaColocada = imagenesAcertadas.contains(nombreImagen);
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        child: Draggable<String>(
+                          data: nombreImagen,
+                          feedback: Material(
+                            color: Colors.transparent,
+                            child: Container(
+                              width: 150,
+                              height: 150,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: const Color.fromRGBO(63, 46, 31, 1), width: 3),
+                              ),
+                              child: _buildImageSmart(nombreImagen),
                             ),
-                          );
-                        }),
-                      ),
-                      const SizedBox(height: 40),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: imagenes.map((palabra) {
-                          final nombreImagen = palabra['nombreImagen'];
-                          if (imagenAcertada(nombreImagen)) {
-                            return const SizedBox(width: 150, height: 150);
-                          }
-                          final estaColocada = imagenesAcertadas.contains(nombreImagen);
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 24),
-                            child: Draggable<String>(
-                              data: nombreImagen,
-                              feedback: Material(
-                                color: Colors.transparent,
-                                child: Container(
-                                  width: 150,
-                                  height: 150,
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(color: const Color.fromRGBO(63, 46, 31, 1), width: 3),
-                                  ),
-                                  child: Image.file(
-                                    File('$docPath/vocabulario/$nombreImagen'),
-                                    fit: BoxFit.contain,
-                                  ),
-                                ),
+                          ),
+                          childWhenDragging: Opacity(
+                            opacity: 0.3,
+                            child: Container(
+                              width: 150,
+                              height: 150,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: const Color.fromRGBO(63, 46, 31, 1), width: 3),
                               ),
-                              childWhenDragging: Opacity(
-                                opacity: 0.3,
-                                child: Container(
-                                  width: 150,
-                                  height: 150,
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(color: const Color.fromRGBO(63, 46, 31, 1), width: 3),
-                                  ),
-                                  child: Image.file(
-                                    File('$docPath/vocabulario/$nombreImagen'),
-                                    fit: BoxFit.contain,
-                                  ),
-                                ),
-                              ),
-                              child: Opacity(
-                                opacity: estaColocada ? 0.3 : 1.0,
-                                child: Container(
-                                  width: 150,
-                                  height: 150,
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(color: const Color.fromRGBO(63, 46, 31, 1), width: 3),
-                                  ),
-                                  child: Image.file(
-                                    File('$docPath/vocabulario/$nombreImagen'),
-                                    fit: BoxFit.contain,
-                                  ),
-                                ),
-                              ),
+                              child: _buildImageSmart(nombreImagen),
                             ),
-                          );
-                        }).toList(),
-                      ),
-                    ],
-                  );
-                },
+                          ),
+                          child: Opacity(
+                            opacity: estaColocada ? 0.3 : 1.0,
+                            child: Container(
+                              width: 150,
+                              height: 150,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: const Color.fromRGBO(63, 46, 31, 1), width: 3),
+                              ),
+                              child: _buildImageSmart(nombreImagen),
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ],
               ),
             ),
           ),

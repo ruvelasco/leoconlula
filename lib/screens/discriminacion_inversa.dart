@@ -69,7 +69,12 @@ class _DiscriminacionInversaState extends State<DiscriminacionInversa> {
   }
 
   Future<void> _cargarPalabras() async {
-    final vocabularioRaw = await DataService.obtenerVocabulario();
+    _userId ??= await _resolverUserId();
+    debugPrint('🔍 DISCRIMINACION_INVERSA: Cargando vocabulario para usuario $_userId');
+
+    final vocabularioRaw = await DataService.obtenerVocabulario(userId: _userId);
+    debugPrint('📚 DISCRIMINACION_INVERSA: ${vocabularioRaw.length} palabras cargadas');
+
     final vocabulario = vocabularioRaw.map((e) => Map<String, dynamic>.from(e)).toList();
 
     if (vocabulario.length < 2) {
@@ -94,28 +99,34 @@ class _DiscriminacionInversaState extends State<DiscriminacionInversa> {
       (incorrecta['label'] ?? '').toString(),
     ]);
 
- 
-
-        // Cargar imagen desde el directorio
-    final docDir = await getApplicationDocumentsDirectory();
-    imageProviders = tarjetas.map((tarjeta) {
-      final nombreImagen = tarjeta['nombreImagen'] ?? '';
-      if (nombreImagen.isNotEmpty) {
-        return FileImage(File('${docDir.path}/vocabulario/$nombreImagen'));
+    // Cargar imagen usando DataService helper
+    final nombreImagenCorrecta = correcta['nombreImagen'] as String? ?? '';
+    if (nombreImagenCorrecta.isNotEmpty) {
+      try {
+        String? localPath;
+        if (!DataService.useRemoteApi) {
+          final docDir = await getApplicationDocumentsDirectory();
+          localPath = docDir.path;
+        }
+        final imageProvider = await DataService.obtenerImageProvider(nombreImagenCorrecta, localPath: localPath);
+        imageProviders = [imageProvider];
+      } catch (e) {
+        debugPrint('❌ DISCRIMINACION_INVERSA: Error cargando imagen: $e');
+        imageProviders = [null];
       }
-      return null;
-    }).toList();
+    }
 
     setState(() {
       palabraCorrecta = correcta['label'] as String? ?? '';
       palabraIncorrecta = incorrecta['label'] as String? ?? '';
+      nombreImagen = nombreImagenCorrecta;
       acierto = false;
       error = false;
       sinPalabras = false;
       errores = 0;
       palabraSoltada = null;
       opciones = [palabraCorrecta, palabraIncorrecta];
-      opciones.shuffle(); // Solo aquí
+      opciones.shuffle();
     });
   }
 
@@ -208,62 +219,57 @@ class _DiscriminacionInversaState extends State<DiscriminacionInversa> {
         child: Stack(
           alignment: Alignment.center,
           children: [
-            FutureBuilder<Directory>(
-              future: getApplicationDocumentsDirectory(),
-              builder: (context, snapshot) {
-                if (!snapshot.hasData) return const SizedBox();
-                return Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      BarraProgreso(aciertos: aciertos, maxAciertos: maxAciertos),
-                      TargetCard(
-                        imageAsset: nombreImagen,
-                        label: palabraCorrecta,
-                        onAccept: (palabra) => _handleAccept(palabra),
-                        droppedChild:
-                            palabraSoltada != null ? WordWidget(word: palabraSoltada!) : null,
-                      ),
-                      const SizedBox(height: 40),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: opciones
-                            .asMap()
-                            .entries
-                            .map((entry) {
-                              final i = entry.key;
-                              final opcion = entry.value;
-                              double opacity = 1.0;
-                              if (errores == 3 && opcion == palabraIncorrecta) {
-                                opacity = 0.15;
-                              }
-                              return Row(
-                                children: [
-                                  if (i != 0) const SizedBox(width: 40),
-                                  Opacity(
-                                    opacity: opacity,
-                                    child: Draggable<String>(
-                                      data: opcion,
-                                      feedback: Material(
-                                        color: Colors.transparent,
-                                        child: WordWidget(word: opcion),
-                                      ),
-                                      childWhenDragging: Opacity(
-                                        opacity: 0.3,
-                                        child: WordWidget(word: opcion),
-                                      ),
-                                      child: WordWidget(word: opcion),
-                                    ),
-                                  ),
-                                ],
-                              );
-                            })
-                            .toList(),
-                      ),
-                    ],
+            Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  BarraProgreso(aciertos: aciertos, maxAciertos: maxAciertos),
+                  TargetCard(
+                    imageAsset: nombreImagen,
+                    imageProvider: imageProviders.isNotEmpty ? imageProviders[0] : null,
+                    label: palabraCorrecta,
+                    onAccept: (palabra) => _handleAccept(palabra),
+                    droppedChild:
+                        palabraSoltada != null ? WordWidget(word: palabraSoltada!) : null,
                   ),
-                );
-              },
+                  const SizedBox(height: 40),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: opciones
+                        .asMap()
+                        .entries
+                        .map((entry) {
+                          final i = entry.key;
+                          final opcion = entry.value;
+                          double opacity = 1.0;
+                          if (errores == 3 && opcion == palabraIncorrecta) {
+                            opacity = 0.15;
+                          }
+                          return Row(
+                            children: [
+                              if (i != 0) const SizedBox(width: 40),
+                              Opacity(
+                                opacity: opacity,
+                                child: Draggable<String>(
+                                  data: opcion,
+                                  feedback: Material(
+                                    color: Colors.transparent,
+                                    child: WordWidget(word: opcion),
+                                  ),
+                                  childWhenDragging: Opacity(
+                                    opacity: 0.3,
+                                    child: WordWidget(word: opcion),
+                                  ),
+                                  child: WordWidget(word: opcion),
+                                ),
+                              ),
+                            ],
+                          );
+                        })
+                        .toList(),
+                  ),
+                ],
+              ),
             ),
             ConfettiWidget(
               confettiController: _confettiController,

@@ -56,8 +56,12 @@ class _SilabasPageState extends State<SilabasPage> {
   }
 
   Future<void> _cargarPalabra() async {
-    final db = await DBHelper.database;
-    final resultado = await db.query('vocabulario', limit: 1);
+    _userId ??= await _resolverUserId();
+    debugPrint('🔍 SILABAS: Cargando vocabulario para usuario $_userId');
+
+    final resultado = await DataService.obtenerVocabulario(userId: _userId);
+    debugPrint('📚 SILABAS: ${resultado.length} palabras cargadas');
+
     if (resultado.isNotEmpty) {
       final item = resultado.first;
       final sils = (item['silabas'] as String).split('*');

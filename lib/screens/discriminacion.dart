@@ -61,7 +61,12 @@ class _DemoDragTargetState extends State<DemoDragTarget> {
   }
 
   Future<void> _cargarPalabras() async {
-    final vocabulario = await DataService.obtenerVocabulario();
+    _userId ??= await _resolverUserId();
+    debugPrint('🔍 DISCRIMINACION: Cargando vocabulario para usuario $_userId');
+
+    final vocabulario = await DataService.obtenerVocabulario(userId: _userId);
+    debugPrint('📚 DISCRIMINACION: ${vocabulario.length} palabras cargadas');
+
     List<Map<String, String>> todas = vocabulario
         .map<Map<String, String>>((item) => {
               'label': item['label'] as String,
@@ -85,16 +90,25 @@ class _DemoDragTargetState extends State<DemoDragTarget> {
     visibleDraggable = true;
     _iniciarSesionSiNoExiste();
 
-    // Cargar imagen desde el directorio
-    final docDir = await getApplicationDocumentsDirectory();
-    imageProviders = tarjetas.map((tarjeta) {
+    // Cargar imágenes usando DataService helper
+    final futures = tarjetas.map((tarjeta) async {
       final nombreImagen = tarjeta['nombreImagen'] ?? '';
-      if (nombreImagen.isNotEmpty) {
-        return FileImage(File('${docDir.path}/vocabulario/$nombreImagen'));
-      }
-      return null;
-    }).toList();
+      if (nombreImagen.isEmpty) return null;
 
+      try {
+        String? localPath;
+        if (!DataService.useRemoteApi) {
+          final docDir = await getApplicationDocumentsDirectory();
+          localPath = docDir.path;
+        }
+        return await DataService.obtenerImageProvider(nombreImagen, localPath: localPath);
+      } catch (e) {
+        debugPrint('❌ DISCRIMINACION: Error cargando imagen $nombreImagen: $e');
+        return null;
+      }
+    });
+
+    imageProviders = await Future.wait(futures);
     setState(() {});
   }
 
@@ -248,43 +262,37 @@ class _DemoDragTargetState extends State<DemoDragTarget> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   BarraProgreso(aciertos: aciertos, maxAciertos: maxAciertos),
-                  FutureBuilder<Directory>(
-                    future: getApplicationDocumentsDirectory(),
-                    builder: (context, snapshot) {
-                      if (!snapshot.hasData) return const SizedBox();
-                      return Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: List.generate(tarjetas.length, (i) {
-                          final idx = orden[i];
-                          final nombreImagen = tarjetas[idx]['nombreImagen'] ?? '';
-                          final label = tarjetas[idx]['label'] ?? '';
-                          Color? borderColor;
-                          if (errores > 1 && idx == zonaCorrecta) {
-                            borderColor = Colors.green;
-                          }
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(tarjetas.length, (i) {
+                      final idx = orden[i];
+                      final nombreImagen = tarjetas[idx]['nombreImagen'] ?? '';
+                      final label = tarjetas[idx]['label'] ?? '';
+                      Color? borderColor;
+                      if (errores > 1 && idx == zonaCorrecta) {
+                        borderColor = Colors.green;
+                      }
 
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
-                            child: AnimatedOpacity(
-                              opacity: (errores >= 3 && idx != zonaCorrecta && palabrasSoltadas[i] == null) ? 0.15 : 1.0,
-                              duration: const Duration(milliseconds: 900),
-                              child: TargetCard(
-                                imageAsset: nombreImagen,
-                                imageProvider: imageProviders[idx],
-                                label: label,
-                                borderColor: borderColor,
-                                droppedChild: palabrasSoltadas.length > i && palabrasSoltadas[i] != null
-                                    ? WordWidget(word: palabrasSoltadas[i]!)
-                                    : null,
-                                onAccept: (String palabra) {
-                                  _handleAccept(i, palabra);
-                                },
-                              ),
-                            ),
-                          );
-                        }),
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: AnimatedOpacity(
+                          opacity: (errores >= 3 && idx != zonaCorrecta && palabrasSoltadas[i] == null) ? 0.15 : 1.0,
+                          duration: const Duration(milliseconds: 900),
+                          child: TargetCard(
+                            imageAsset: nombreImagen,
+                            imageProvider: imageProviders.length > idx ? imageProviders[idx] : null,
+                            label: label,
+                            borderColor: borderColor,
+                            droppedChild: palabrasSoltadas.length > i && palabrasSoltadas[i] != null
+                                ? WordWidget(word: palabrasSoltadas[i]!)
+                                : null,
+                            onAccept: (String palabra) {
+                              _handleAccept(i, palabra);
+                            },
+                          ),
+                        ),
                       );
-                    },
+                    }),
                   ),
                   const SizedBox(height: 40),
                   AnimatedOpacity(

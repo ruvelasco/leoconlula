@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import '../helpers/db_helper.dart';
 import 'api_service.dart';
 
@@ -240,5 +241,34 @@ class DataService {
       // En local, simplemente retornamos la ruta del archivo
       return archivo.path;
     }
+  }
+
+  /// Obtener el ImageProvider correcto según el tipo de imagen (URL o archivo local)
+  /// - Para URLs (modo remoto): retorna NetworkImage
+  /// - Para archivos locales: retorna FileImage (requiere path completo)
+  static Future<ImageProvider?> obtenerImageProvider(String nombreImagen, {String? localPath}) async {
+    if (nombreImagen.isEmpty) return null;
+
+    // Si es una URL, usar NetworkImage
+    if (nombreImagen.startsWith('http://') || nombreImagen.startsWith('https://')) {
+      debugPrint('🖼️ DataService: Usando NetworkImage para: $nombreImagen');
+      return NetworkImage(nombreImagen);
+    }
+
+    // Si es archivo local, necesitamos el path
+    if (useRemoteApi) {
+      // En modo remoto pero nombreImagen no es URL, algo está mal
+      debugPrint('⚠️ DataService: Modo remoto pero nombreImagen no es URL: $nombreImagen');
+      return null;
+    }
+
+    // Modo local - usar FileImage
+    if (localPath != null) {
+      debugPrint('🖼️ DataService: Usando FileImage para: $localPath/$nombreImagen');
+      return FileImage(File('$localPath/vocabulario/$nombreImagen'));
+    }
+
+    debugPrint('❌ DataService: No se puede cargar imagen sin localPath en modo local');
+    return null;
   }
 }

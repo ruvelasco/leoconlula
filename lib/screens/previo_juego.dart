@@ -65,10 +65,12 @@ class _PrevioJuegoPageState extends State<PrevioJuegoPage> {
   Future<void> _cargarVocabulario() async {
     try {
       // Usar DataService para que funcione tanto en local como en remoto
-      debugPrint('🔍 PREVIO_JUEGO: Cargando vocabulario para usuario ${widget.userId}...');
+      debugPrint(
+          '🔍 PREVIO_JUEGO: Cargando vocabulario para usuario ${widget.userId}...');
       debugPrint('🔍 PREVIO_JUEGO: userId type: ${widget.userId.runtimeType}');
       debugPrint('🔍 PREVIO_JUEGO: useRemoteApi: ${DataService.useRemoteApi}');
-      final resultado = await DataService.obtenerVocabulario(userId: widget.userId);
+      final resultado =
+          await DataService.obtenerVocabulario(userId: widget.userId);
       debugPrint('📚 Vocabulario obtenido: ${resultado.length} palabras');
 
       if (resultado.isEmpty) {
@@ -89,14 +91,16 @@ class _PrevioJuegoPageState extends State<PrevioJuegoPage> {
     } catch (e) {
       debugPrint('❌ Error al cargar vocabulario: $e');
       setState(() {
-        tarjetasVocabulario = []; // Asegurar que no se quede en loading infinito
+        tarjetasVocabulario =
+            []; // Asegurar que no se quede en loading infinito
       });
     }
   }
 
   Future<void> _cargarConfiguracionActividades() async {
     final orden = await DataService.obtenerOrdenActividades(widget.userId);
-    final habilitadas = await DataService.obtenerActividadesHabilitadas(widget.userId);
+    final habilitadas =
+        await DataService.obtenerActividadesHabilitadas(widget.userId);
     print('🔧 Orden cargado: $orden');
     print('🔧 Habilitadas cargadas: $habilitadas');
     setState(() {
@@ -111,12 +115,16 @@ class _PrevioJuegoPageState extends State<PrevioJuegoPage> {
 
     // Obtener las palabras del bloque actual (tarjeta actual)
     final palabrasBloqueActual = tarjetaActual < tarjetasVocabulario.length
-        ? tarjetasVocabulario[tarjetaActual].map((p) => (p['label'] ?? '').toString()).toSet()
+        ? tarjetasVocabulario[tarjetaActual]
+            .map((p) => (p['label'] ?? '').toString())
+            .toSet()
         : <String>{};
 
     // Obtener las palabras del bloque anterior
     final palabrasBloqueAnterior = tarjetaActual > 0
-        ? tarjetasVocabulario[tarjetaActual - 1].map((p) => (p['label'] ?? '').toString()).toSet()
+        ? tarjetasVocabulario[tarjetaActual - 1]
+            .map((p) => (p['label'] ?? '').toString())
+            .toSet()
         : <String>{};
 
     // Obtener sesiones completadas del usuario
@@ -140,9 +148,12 @@ class _PrevioJuegoPageState extends State<PrevioJuegoPage> {
 
       // Verificar si pertenece al bloque actual
       bool perteneceAlBloqueActual = false;
-      if (p1.isNotEmpty && palabrasBloqueActual.contains(p1)) perteneceAlBloqueActual = true;
-      if (p2.isNotEmpty && palabrasBloqueActual.contains(p2)) perteneceAlBloqueActual = true;
-      if (p3.isNotEmpty && palabrasBloqueActual.contains(p3)) perteneceAlBloqueActual = true;
+      if (p1.isNotEmpty && palabrasBloqueActual.contains(p1))
+        perteneceAlBloqueActual = true;
+      if (p2.isNotEmpty && palabrasBloqueActual.contains(p2))
+        perteneceAlBloqueActual = true;
+      if (p3.isNotEmpty && palabrasBloqueActual.contains(p3))
+        perteneceAlBloqueActual = true;
 
       if (perteneceAlBloqueActual) {
         mapa[act] = true;
@@ -151,9 +162,12 @@ class _PrevioJuegoPageState extends State<PrevioJuegoPage> {
       // Verificar si pertenece al bloque anterior
       if (tarjetaActual > 0) {
         bool perteneceAlBloqueAnterior = false;
-        if (p1.isNotEmpty && palabrasBloqueAnterior.contains(p1)) perteneceAlBloqueAnterior = true;
-        if (p2.isNotEmpty && palabrasBloqueAnterior.contains(p2)) perteneceAlBloqueAnterior = true;
-        if (p3.isNotEmpty && palabrasBloqueAnterior.contains(p3)) perteneceAlBloqueAnterior = true;
+        if (p1.isNotEmpty && palabrasBloqueAnterior.contains(p1))
+          perteneceAlBloqueAnterior = true;
+        if (p2.isNotEmpty && palabrasBloqueAnterior.contains(p2))
+          perteneceAlBloqueAnterior = true;
+        if (p3.isNotEmpty && palabrasBloqueAnterior.contains(p3))
+          perteneceAlBloqueAnterior = true;
 
         if (perteneceAlBloqueAnterior) {
           actividadesBloqueAnterior[act] = true;
@@ -178,10 +192,10 @@ class _PrevioJuegoPageState extends State<PrevioJuegoPage> {
 
     bool bloqueAnteriorCompleto = tarjetaActual == 0;
     if (tarjetaActual > 0) {
-      bloqueAnteriorCompleto = actividadesRequeridas.every(
-        (act) => actividadesBloqueAnterior[act] == true
-      );
-      print('🔒 Bloque $tarjetaActual - Actividades requeridas: $actividadesRequeridas');
+      bloqueAnteriorCompleto = actividadesRequeridas
+          .every((act) => actividadesBloqueAnterior[act] == true);
+      print(
+          '🔒 Bloque $tarjetaActual - Actividades requeridas: $actividadesRequeridas');
       print('🔒 Completadas en bloque anterior: $actividadesBloqueAnterior');
       print('🔒 ¿Bloque anterior completo?: $bloqueAnteriorCompleto');
     }
@@ -235,7 +249,8 @@ class _PrevioJuegoPageState extends State<PrevioJuegoPage> {
             await Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => ConfiguracionUsuarioPage(userId: widget.userId),
+                builder: (context) =>
+                    ConfiguracionUsuarioPage(userId: widget.userId),
               ),
             );
             // Recargar configuración después de volver de configuración
@@ -257,7 +272,8 @@ class _PrevioJuegoPageState extends State<PrevioJuegoPage> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.library_books, size: 80, color: Color.fromRGBO(63, 46, 31, 0.5)),
+                    const Icon(Icons.library_books,
+                        size: 80, color: Color.fromRGBO(63, 46, 31, 0.5)),
                     const SizedBox(height: 20),
                     Text(
                       'No hay vocabulario para este usuario',
@@ -278,89 +294,90 @@ class _PrevioJuegoPageState extends State<PrevioJuegoPage> {
                 ),
               )
             : Column(
-                  children: [
-                    const SizedBox(height: 20),
-                    // Carrusel de tarjetas
-                    Expanded(
-                      child: CarouselSlider.builder(
-                        itemCount: tarjetasVocabulario.length,
-                        itemBuilder: (context, index, realIndex) {
-                          return _buildTarjetaVocabulario(
-                            tarjetasVocabulario[index],
-                            anchoPantalla,
-                            altoPantalla,
-                            index,
-                          );
+                children: [
+                  const SizedBox(height: 20),
+                  // Carrusel de tarjetas
+                  Expanded(
+                    child: CarouselSlider.builder(
+                      itemCount: tarjetasVocabulario.length,
+                      itemBuilder: (context, index, realIndex) {
+                        return _buildTarjetaVocabulario(
+                          tarjetasVocabulario[index],
+                          anchoPantalla,
+                          altoPantalla,
+                          index,
+                        );
+                      },
+                      options: CarouselOptions(
+                        height: altoPantalla * 0.85,
+                        viewportFraction: 0.6,
+                        enlargeCenterPage: true,
+                        enableInfiniteScroll: false,
+                        onPageChanged: (index, reason) {
+                          setState(() {
+                            tarjetaActual = index;
+                          });
+                          _cargarProgresoActividades();
                         },
-                        options: CarouselOptions(
-                          height: altoPantalla * 0.85,
-                          viewportFraction: 0.6,
-                          enlargeCenterPage: true,
-                          enableInfiniteScroll: false,
-                          onPageChanged: (index, reason) {
-                            setState(() {
-                              tarjetaActual = index;
-                            });
-                            _cargarProgresoActividades();
-                          },
-                        ),
                       ),
                     ),
-                    // Indicador de página
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 20),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: List.generate(
-                          tarjetasVocabulario.length,
-                          (index) => Container(
-                            width: 8,
-                            height: 8,
-                            margin: const EdgeInsets.symmetric(horizontal: 4),
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color:
-                                  tarjetaActual == index
-                                      ? const Color.fromRGBO(63, 46, 31, 1)
-                                      : Colors.grey[400],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    // Mensaje de advertencia si el bloque anterior no está completo
-                    if (!bloqueAnteriorCompletado && tarjetaActual > 0)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
+                  ),
+                  // Indicador de página
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 20),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(
+                        tarjetasVocabulario.length,
+                        (index) => Container(
+                          width: 8,
+                          height: 8,
+                          margin: const EdgeInsets.symmetric(horizontal: 4),
                           decoration: BoxDecoration(
-                            color: Colors.orange[100],
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.orange, width: 2),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.lock, color: Colors.orange[700], size: 20),
-                              const SizedBox(width: 8),
-                              Flexible(
-                                child: Text(
-                                  'Completa todas las actividades del bloque anterior para desbloquear este bloque',
-                                  style: TextStyle(
-                                    color: Colors.orange[900],
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 12,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ),
-                            ],
+                            shape: BoxShape.circle,
+                            color: tarjetaActual == index
+                                ? const Color.fromRGBO(63, 46, 31, 1)
+                                : Colors.grey[400],
                           ),
                         ),
                       ),
-                  ],
-                ),
+                    ),
+                  ),
+                  // Mensaje de advertencia si el bloque anterior no está completo
+                  if (!bloqueAnteriorCompletado && tarjetaActual > 0)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 10),
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.orange[100],
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.orange, width: 2),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.lock,
+                                color: Colors.orange[700], size: 20),
+                            const SizedBox(width: 8),
+                            Flexible(
+                              child: Text(
+                                'Completa todas las actividades del bloque anterior para desbloquear este bloque',
+                                style: TextStyle(
+                                  color: Colors.orange[900],
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              ),
       ),
     );
   }
@@ -397,71 +414,7 @@ class _PrevioJuegoPageState extends State<PrevioJuegoPage> {
             flex: 1,
             child: Container(
               padding: const EdgeInsets.all(10),
-              child: FutureBuilder<Directory>(
-                future: getApplicationDocumentsDirectory(),
-                builder: (context, snapshot) {
-                  if (!snapshot.hasData) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  const navColor = Color.fromRGBO(63, 46, 31, 1);
-                  return Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(3, (index) {
-                      if (index < palabras.length) {
-                        final palabra = palabras[index];
-                        final nombreImagen = palabra['nombreImagen'] ?? '';
-                        return Container(
-                          width: 95,
-                          margin: const EdgeInsets.symmetric(horizontal: 6),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 10,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: navColor, width: 3),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.12),
-                                blurRadius: 8,
-                                offset: const Offset(0, 3),
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              if (nombreImagen.isNotEmpty)
-                                SizedBox(
-                                  height: 70,
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(4),
-                                    child: _buildVocabularioImage(nombreImagen, snapshot.data!.path),
-                                  ),
-                                ),
-                              const SizedBox(height: 6),
-                              Text(
-                                (palabra['label'] ?? '')
-                                    .toString()
-                                    .toUpperCase(),
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: navColor,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ],
-                          ),
-                        );
-                      } else {
-                        return const SizedBox(width: 95);
-                      }
-                    }),
-                  );
-                },
-              ),
+              child: _buildPalabrasRow(palabras),
             ),
           ),
           // Divisor
@@ -587,11 +540,14 @@ class _PrevioJuegoPageState extends State<PrevioJuegoPage> {
 
     // Filtrar solo las actividades habilitadas
     final actividadesAMostrar = ordenAUsar
-        .where((clave) => actividadesHabilitadas.isEmpty || actividadesHabilitadas.contains(clave))
+        .where((clave) =>
+            actividadesHabilitadas.isEmpty ||
+            actividadesHabilitadas.contains(clave))
         .toList();
 
     print('🎮 Total actividades configuradas: ${ordenAUsar.length}');
-    print('🎮 Actividades a mostrar (filtradas): ${actividadesAMostrar.length}');
+    print(
+        '🎮 Actividades a mostrar (filtradas): ${actividadesAMostrar.length}');
     print('🎮 Lista de actividades a mostrar: $actividadesAMostrar');
 
     final List<Widget> botones = [];
@@ -601,21 +557,25 @@ class _PrevioJuegoPageState extends State<PrevioJuegoPage> {
 
       if (actividad == null) continue;
 
-      final previaCompletada =
-          i == 0 ? true : (actividadesCompletadas[actividadesAMostrar[i - 1]] ?? false);
+      final previaCompletada = i == 0
+          ? true
+          : (actividadesCompletadas[actividadesAMostrar[i - 1]] ?? false);
 
       // Solo habilitar si:
       // 1. Es la tarjeta actual
       // 2. El bloque anterior está completo
       // 3. La actividad previa está completa
-      final estaHabilitado = esTarjetaActual && bloqueAnteriorCompletado && previaCompletada;
+      final estaHabilitado =
+          esTarjetaActual && bloqueAnteriorCompletado && previaCompletada;
 
       print('🔍 Actividad $i: $clave');
       print('   - Es tarjeta actual: $esTarjetaActual');
       print('   - Bloque anterior completo: $bloqueAnteriorCompletado');
-      print('   - Previa completada (${i > 0 ? actividadesAMostrar[i - 1] : 'primera'}): $previaCompletada');
+      print(
+          '   - Previa completada (${i > 0 ? actividadesAMostrar[i - 1] : 'primera'}): $previaCompletada');
       print('   - HABILITADO: $estaHabilitado');
-      print('   - Actividades completadas bloque actual: $actividadesCompletadas');
+      print(
+          '   - Actividades completadas bloque actual: $actividadesCompletadas');
 
       botones.add(
         _buildActividadButton(
@@ -625,11 +585,12 @@ class _PrevioJuegoPageState extends State<PrevioJuegoPage> {
           estaHabilitado
               ? () => Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => actividad.builder()),
+                    MaterialPageRoute(
+                        builder: (context) => actividad.builder()),
                   ).then((_) => _cargarProgresoActividades())
               : null,
           iconSize: 84,
-          textSize: 26,
+          textSize: 24R,
           habilitado: estaHabilitado,
         ),
       );
@@ -637,24 +598,133 @@ class _PrevioJuegoPageState extends State<PrevioJuegoPage> {
     return botones;
   }
 
-  /// Construye el widget de imagen según el tipo (URL o archivo local)
-  Widget _buildVocabularioImage(String nombreImagen, String appDocPath) {
-    // Si nombreImagen es una URL (modo remoto), usar Image.network
-    if (nombreImagen.startsWith('http://') || nombreImagen.startsWith('https://')) {
+  /// Construye la fila de 3 palabras de vocabulario
+  Widget _buildPalabrasRow(List<Map<String, dynamic>> palabras) {
+    const navColor = Color.fromRGBO(63, 46, 31, 1);
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(3, (index) {
+        if (index < palabras.length) {
+          final palabra = palabras[index];
+          final nombreImagen = palabra['nombreImagen'] ?? '';
+          debugPrint(
+              '🎯 Construyendo tarjeta ${index + 1}: "${palabra['label']}" con imagen "$nombreImagen"');
+
+          return Container(
+            width: 95,
+            margin: const EdgeInsets.symmetric(horizontal: 6),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 8,
+              vertical: 10,
+            ),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: navColor, width: 3),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.12),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (nombreImagen.isNotEmpty)
+                  SizedBox(
+                    height: 70,
+                    child: Padding(
+                      padding: const EdgeInsets.all(4),
+                      child: _buildVocabularioImageSmart(nombreImagen),
+                    ),
+                  ),
+                const SizedBox(height: 6),
+                Text(
+                  (palabra['label'] ?? '').toString().toUpperCase(),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: navColor,
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          );
+        } else {
+          return const SizedBox(width: 95);
+        }
+      }),
+    );
+  }
+
+  /// Construye el widget de imagen - detecta automáticamente si es URL o archivo local
+  Widget _buildVocabularioImageSmart(String nombreImagen) {
+    debugPrint(
+        '🖼️ _buildVocabularioImageSmart llamado: nombreImagen="$nombreImagen"');
+
+    // Si nombreImagen es una URL (modo remoto), usar Image.network directamente
+    if (nombreImagen.startsWith('http://') ||
+        nombreImagen.startsWith('https://')) {
+      debugPrint('🖼️ Usando Image.network para: $nombreImagen');
       return Image.network(
         nombreImagen,
         fit: BoxFit.contain,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) {
+            debugPrint('✅ Imagen cargada: $nombreImagen');
+            return child;
+          }
+          debugPrint(
+              '⏳ Cargando imagen: ${loadingProgress.cumulativeBytesLoaded}/${loadingProgress.expectedTotalBytes ?? "?"}');
+          return const Center(
+            child: SizedBox(
+              width: 30,
+              height: 30,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          );
+        },
         errorBuilder: (context, error, stackTrace) {
-          return const Icon(Icons.broken_image, size: 50);
+          debugPrint('❌ Error cargando imagen $nombreImagen: $error');
+          return const Icon(Icons.broken_image, size: 50, color: Colors.red);
         },
       );
     } else {
-      // Si es modo local, usar Image.file
-      return Image.file(
-        File('$appDocPath/vocabulario/$nombreImagen'),
-        fit: BoxFit.contain,
-        errorBuilder: (context, error, stackTrace) {
-          return const Icon(Icons.broken_image, size: 50);
+      // Si es modo local, necesitamos usar FutureBuilder para obtener la ruta
+      debugPrint('🖼️ Modo local - usando FutureBuilder para obtener ruta');
+      return FutureBuilder<Directory>(
+        future: getApplicationDocumentsDirectory(),
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            debugPrint('❌ Error obteniendo directorio: ${snapshot.error}');
+            return const Icon(Icons.error, size: 50, color: Colors.orange);
+          }
+          if (!snapshot.hasData) {
+            return const Center(
+              child: SizedBox(
+                width: 30,
+                height: 30,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            );
+          }
+          final filePath = '${snapshot.data!.path}/vocabulario/$nombreImagen';
+          debugPrint('🖼️ Cargando imagen local desde: $filePath');
+          return Image.file(
+            File(filePath),
+            fit: BoxFit.contain,
+            errorBuilder: (context, error, stackTrace) {
+              debugPrint('❌ Error cargando archivo $filePath: $error');
+              return const Icon(Icons.broken_image,
+                  size: 50, color: Colors.red);
+            },
+          );
         },
       );
     }

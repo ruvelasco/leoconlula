@@ -92,10 +92,12 @@ class TargetCard extends StatelessWidget {
                   label,
                   style: const TextStyle(
                     color: Color.fromRGBO(63, 46, 31, 1),
-                    fontSize: 28,
+                    fontSize: 20,
                     fontWeight: FontWeight.bold,
                   ),
                   textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ),
