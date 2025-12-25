@@ -2,15 +2,63 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
+import '../providers/auth_provider.dart';
 
 class ApiService {
   // URL del backend en Railway
   static const String baseUrl = 'https://worthy-wonder-production-7e0b.up.railway.app';
 
-  // Headers comunes
-  static Map<String, String> get _headers => {
-    'Content-Type': 'application/json',
-  };
+  // Reference to AuthProvider for token management
+  static AuthProvider? _authProvider;
+
+  // Set the AuthProvider instance (call this from main.dart)
+  static void setAuthProvider(AuthProvider provider) {
+    _authProvider = provider;
+  }
+
+  // Headers comunes (incluye token de autenticación si está disponible)
+  static Future<Map<String, String>> _getHeaders() async {
+    final headers = <String, String>{
+      'Content-Type': 'application/json',
+    };
+
+    // Add authentication token if available
+    if (_authProvider != null) {
+      final token = await _authProvider!.getValidAccessToken();
+      if (token != null) {
+        headers['Authorization'] = 'Bearer $token';
+      }
+    }
+
+    return headers;
+  }
+
+  // Execute HTTP request with automatic token refresh on 401
+  static Future<http.Response> _executeWithAuth(
+    Future<http.Response> Function(Map<String, String> headers) request,
+  ) async {
+    final headers = await _getHeaders();
+    var response = await request(headers);
+
+    // If unauthorized and we have an auth provider, try to refresh token
+    if (response.statusCode == 401 && _authProvider != null) {
+      debugPrint('⚠️ 401 Unauthorized - Intentando refrescar token...');
+
+      final newToken = await _authProvider!.getValidAccessToken();
+      if (newToken != null) {
+        // Retry request with new token
+        final newHeaders = await _getHeaders();
+        response = await request(newHeaders);
+        debugPrint('✅ Request reintentat con nuevo token');
+      } else {
+        // Token refresh failed, logout user
+        debugPrint('❌ No se pudo refrescar el token, cerrando sesión');
+        await _authProvider!.logout();
+      }
+    }
+
+    return response;
+  }
 
   // ==================== USUARIOS ====================
 
@@ -20,9 +68,10 @@ class ApiService {
       debugPrint('📤 API: Creando usuario "$nombre" con foto "$foto"');
       debugPrint('📍 URL: $baseUrl/usuarios');
 
+      final headers = await _getHeaders();
       final response = await http.post(
         Uri.parse('$baseUrl/usuarios'),
-        headers: _headers,
+        headers: headers,
         body: jsonEncode({
           'nombre': nombre,
           'foto': foto,
@@ -50,7 +99,11 @@ class ApiService {
   static Future<List<Map<String, dynamic>>> obtenerUsuarios() async {
     try {
       debugPrint('📤 API: Obteniendo usuarios...');
-      final response = await http.get(Uri.parse('$baseUrl/usuarios'));
+      final headers = await _getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/usuarios'),
+        headers: headers,
+      );
 
       debugPrint('📥 Status: ${response.statusCode}');
 
@@ -72,7 +125,11 @@ class ApiService {
   static Future<void> eliminarUsuario(int id) async {
     try {
       debugPrint("Eliminando usuario con id: $id");
-      final response = await http.delete(Uri.parse('$baseUrl/usuarios/$id'));
+      final headers = await _getHeaders();
+      final response = await http.delete(
+        Uri.parse('$baseUrl/usuarios/$id'),
+        headers: headers,
+      );
 
       if (response.statusCode != 204) {
         throw Exception('Error al eliminar usuario: ${response.body}');
@@ -86,9 +143,10 @@ class ApiService {
   /// Actualizar un campo específico del usuario
   static Future<void> actualizarCampoUsuarioBool(int userId, String campo, bool valor) async {
     try {
+      final headers = await _getHeaders();
       final response = await http.patch(
         Uri.parse('$baseUrl/usuarios/$userId/campos'),
-        headers: _headers,
+        headers: headers,
         body: jsonEncode({campo: valor}),
       );
 
@@ -104,8 +162,10 @@ class ApiService {
   /// Obtener el orden de actividades de un usuario
   static Future<List<String>> obtenerOrdenActividades(int userId) async {
     try {
+      final headers = await _getHeaders();
       final response = await http.get(
         Uri.parse('$baseUrl/usuarios/$userId/orden-actividades'),
+        headers: headers,
       );
 
       if (response.statusCode == 200) {
@@ -132,9 +192,10 @@ class ApiService {
   /// Guardar el orden de actividades de un usuario
   static Future<void> guardarOrdenActividades(int userId, List<String> orden) async {
     try {
+      final headers = await _getHeaders();
       final response = await http.patch(
         Uri.parse('$baseUrl/usuarios/$userId/orden-actividades'),
-        headers: _headers,
+        headers: headers,
         body: jsonEncode({'orden': orden}),
       );
 
@@ -150,8 +211,10 @@ class ApiService {
   /// Obtener las actividades habilitadas de un usuario
   static Future<List<String>> obtenerActividadesHabilitadas(int userId) async {
     try {
+      final headers = await _getHeaders();
       final response = await http.get(
         Uri.parse('$baseUrl/usuarios/$userId/actividades-habilitadas'),
+        headers: headers,
       );
 
       if (response.statusCode == 200) {
@@ -178,9 +241,10 @@ class ApiService {
   /// Guardar las actividades habilitadas de un usuario
   static Future<void> guardarActividadesHabilitadas(int userId, List<String> actividades) async {
     try {
+      final headers = await _getHeaders();
       final response = await http.patch(
         Uri.parse('$baseUrl/usuarios/$userId/actividades-habilitadas'),
-        headers: _headers,
+        headers: headers,
         body: jsonEncode({'actividades': actividades}),
       );
 
@@ -198,9 +262,10 @@ class ApiService {
   /// Insertar una nueva palabra al vocabulario
   static Future<void> insertarVocabulario(String nombreImagen, String label, int userId, {String silabas = ''}) async {
     try {
+      final headers = await _getHeaders();
       final response = await http.post(
         Uri.parse('$baseUrl/vocabulario'),
-        headers: _headers,
+        headers: headers,
         body: jsonEncode({
           'nombreImagen': nombreImagen,
           'label': label,
@@ -229,7 +294,8 @@ class ApiService {
       debugPrint('📍 URL: $uri');
       debugPrint('📍 userId parameter: $userId');
 
-      final response = await http.get(uri);
+      final headers = await _getHeaders();
+      final response = await http.get(uri, headers: headers);
 
       debugPrint('📥 Status: ${response.statusCode}');
       debugPrint('📥 Body length: ${response.body.length}');
@@ -253,7 +319,11 @@ class ApiService {
   /// Eliminar una palabra del vocabulario
   static Future<void> eliminarVocabulario(int id) async {
     try {
-      final response = await http.delete(Uri.parse('$baseUrl/vocabulario/$id'));
+      final headers = await _getHeaders();
+      final response = await http.delete(
+        Uri.parse('$baseUrl/vocabulario/$id'),
+        headers: headers,
+      );
 
       if (response.statusCode != 204) {
         throw Exception('Error al eliminar vocabulario: ${response.body}');
@@ -277,9 +347,10 @@ class ApiService {
     try {
       final inicioMs = (inicio ?? DateTime.now()).millisecondsSinceEpoch;
 
+      final headers = await _getHeaders();
       final response = await http.post(
         Uri.parse('$baseUrl/sesiones'),
-        headers: _headers,
+        headers: headers,
         body: jsonEncode({
           'userId': userId,
           'actividad': actividad,
@@ -313,9 +384,10 @@ class ApiService {
     try {
       final finMs = fin?.millisecondsSinceEpoch;
 
+      final headers = await _getHeaders();
       final response = await http.patch(
         Uri.parse('$baseUrl/sesiones/$sesionId/finalizar'),
-        headers: _headers,
+        headers: headers,
         body: jsonEncode({
           if (finMs != null) 'fin_at': finMs,
           if (aciertos != null) 'aciertos': aciertos,
@@ -343,9 +415,10 @@ class ApiService {
     int? tiempoMs,
   }) async {
     try {
+      final headers = await _getHeaders();
       final response = await http.post(
         Uri.parse('$baseUrl/sesiones/$sesionId/detalle'),
-        headers: _headers,
+        headers: headers,
         body: jsonEncode({
           'vocabularioId': vocabularioId,
           'mostrada': mostrada,
@@ -372,7 +445,8 @@ class ApiService {
       if (actividad != null) params['actividad'] = actividad;
 
       final uri = Uri.parse(url).replace(queryParameters: params.isEmpty ? null : params);
-      final response = await http.get(uri);
+      final headers = await _getHeaders();
+      final response = await http.get(uri, headers: headers);
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
@@ -389,8 +463,10 @@ class ApiService {
   /// Borrar todas las sesiones de un usuario
   static Future<void> borrarSesionesUsuario(int userId) async {
     try {
+      final headers = await _getHeaders();
       final response = await http.delete(
         Uri.parse('$baseUrl/sesiones?userId=$userId'),
+        headers: headers,
       );
 
       if (response.statusCode != 204) {
@@ -405,7 +481,11 @@ class ApiService {
   /// Borrar todas las sesiones
   static Future<void> borrarTodasLasSesiones() async {
     try {
-      final response = await http.delete(Uri.parse('$baseUrl/sesiones'));
+      final headers = await _getHeaders();
+      final response = await http.delete(
+        Uri.parse('$baseUrl/sesiones'),
+        headers: headers,
+      );
 
       if (response.statusCode != 204) {
         throw Exception('Error al borrar todas las sesiones: ${response.body}');

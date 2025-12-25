@@ -402,6 +402,73 @@ app.get('/vocabulario', authenticate, async (req, res) => {
         res.status(400).json({ error: err.message });
     }
 });
+// Legacy POST /vocabulario endpoint (maps to /api/vocabulario)
+app.post('/vocabulario', authenticate, async (req, res) => {
+    try {
+        const { nombreImagen, label, usuarioId, silabas = '' } = req.body;
+        const estudianteId = usuarioId; // Map legacy usuarioId to estudianteId
+        // Verify student is assigned to current user
+        const asignacion = await prisma.estudianteAsignacion.findFirst({
+            where: {
+                authUserId: req.user.userId,
+                estudianteId,
+            },
+        });
+        if (!asignacion) {
+            res.status(403).json({ error: 'Acceso denegado a este estudiante' });
+            return;
+        }
+        const item = await prisma.vocabulario.create({
+            data: {
+                nombreImagen,
+                label,
+                estudianteId,
+                silabas,
+            },
+        });
+        // Add compatibility fields
+        const itemCompat = {
+            ...item,
+            idUsuario: item.estudianteId,
+            usuarioId: item.estudianteId,
+        };
+        res.status(201).json(itemCompat);
+    }
+    catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+// Legacy DELETE /vocabulario/:id endpoint
+app.delete('/vocabulario/:id', authenticate, async (req, res) => {
+    try {
+        const id = Number(req.params.id);
+        // Verify vocabulary item belongs to a student assigned to current user
+        const item = await prisma.vocabulario.findUnique({
+            where: { id },
+            include: { estudiante: true },
+        });
+        if (!item) {
+            res.status(404).json({ error: 'Vocabulario no encontrado' });
+            return;
+        }
+        const asignacion = await prisma.estudianteAsignacion.findFirst({
+            where: {
+                authUserId: req.user.userId,
+                estudianteId: item.estudianteId,
+            },
+        });
+        if (!asignacion) {
+            res.status(403).json({ error: 'Acceso denegado' });
+            return;
+        }
+        await prisma.sesionVocabulario.deleteMany({ where: { vocabularioId: id } });
+        await prisma.vocabulario.delete({ where: { id } });
+        res.status(204).send();
+    }
+    catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
 // 404 handler
 app.use((_req, res) => {
     res.status(404).json({ error: 'Not found' });
