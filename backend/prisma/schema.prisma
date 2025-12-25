@@ -7,10 +7,60 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Usuario {
+// ==================== AUTHENTICATION MODELS ====================
+
+enum UserRole {
+  PROFESOR        // Gestión completa de múltiples estudiantes
+  PADRE           // Acceso limitado solo a sus hijos asignados
+  ADMIN           // Administración del sistema (uso futuro)
+}
+
+model AuthUser {
+  id                      Int       @id @default(autoincrement())
+  email                   String    @unique
+  passwordHash            String
+  nombre                  String
+  role                    UserRole  @default(PROFESOR)
+  foto                    String?
+  emailVerified           Boolean   @default(false)
+  emailVerificationToken  String?
+  passwordResetToken      String?
+  passwordResetExpires    DateTime?
+  isActive                Boolean   @default(true)
+  lastLogin               DateTime?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  estudiantes             EstudianteAsignacion[]
+  refreshTokens           RefreshToken[]
+
+  @@index([email])
+  @@index([role])
+}
+
+model RefreshToken {
+  id          Int       @id @default(autoincrement())
+  token       String    @unique
+  user        AuthUser  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      Int
+  expiresAt   DateTime
+  createdAt   DateTime  @default(now())
+  revoked     Boolean   @default(false)
+
+  @@index([token])
+  @@index([userId])
+}
+
+// ==================== STUDENT MODELS ====================
+
+model Estudiante {
   id                      Int       @id @default(autoincrement())
   nombre                  String?
   foto                    String?
+  fechaNacimiento         DateTime?
+  notas                   String?   // Notas privadas para tutores
+
+  // Preferencias de aprendizaje
   fuente                  String?   @default("ARIAL")
   tipo                    String?   @default("MAYÚSCULAS")
   voz                     String?   @default("MONICA")
@@ -22,38 +72,65 @@ model Usuario {
   numero_repeticiones     Int       @default(5)
   orden_actividades       String?   @default("aprendizaje,discriminacion,discriminacion_inversa,silabas,arrastre,doble,silabas_orden,silabas_distrac")
   actividades_habilitadas String?   @default("aprendizaje,discriminacion,discriminacion_inversa,silabas,arrastre,doble,silabas_orden,silabas_distrac")
+
+  tutores                 EstudianteAsignacion[]
   vocabularios            Vocabulario[]
   sesiones                ActividadSesion[]
+
   createdAt               DateTime  @default(now())
   updatedAt               DateTime  @updatedAt
+
+  @@index([nombre])
 }
 
+model EstudianteAsignacion {
+  id            Int         @id @default(autoincrement())
+  authUser      AuthUser    @relation(fields: [authUserId], references: [id], onDelete: Cascade)
+  authUserId    Int
+  estudiante    Estudiante  @relation(fields: [estudianteId], references: [id], onDelete: Cascade)
+  estudianteId  Int
+  role          String      @default("TUTOR")
+  createdAt     DateTime    @default(now())
+  createdBy     Int?        // Quién creó esta asignación (para auditoría)
+
+  @@unique([authUserId, estudianteId])
+  @@index([authUserId])
+  @@index([estudianteId])
+}
+
+// ==================== VOCABULARY & SESSIONS ====================
+
 model Vocabulario {
-  id           Int      @id @default(autoincrement())
+  id           Int          @id @default(autoincrement())
   nombreImagen String?
   label        String?
   silabas      String?
-  usuario      Usuario? @relation(fields: [usuarioId], references: [id])
-  usuarioId    Int?
+  estudiante   Estudiante?  @relation(fields: [estudianteId], references: [id])
+  estudianteId Int?
   sesiones     SesionVocabulario[]
+
+  @@index([estudianteId])
 }
 
 model ActividadSesion {
-  id          Int      @id @default(autoincrement())
-  user        Usuario  @relation(fields: [userId], references: [id])
-  userId      Int
-  actividad   String
-  inicio_at   BigInt
-  fin_at      BigInt?
-  duracion_ms Int?
-  aciertos    Int      @default(0)
-  errores     Int      @default(0)
-  nivel       String?
-  resultado   String?
-  palabra1    String?
-  palabra2    String?
-  palabra3    String?
-  detalles    SesionVocabulario[]
+  id           Int         @id @default(autoincrement())
+  estudiante   Estudiante  @relation(fields: [estudianteId], references: [id])
+  estudianteId Int
+  actividad    String
+  inicio_at    BigInt
+  fin_at       BigInt?
+  duracion_ms  Int?
+  aciertos     Int         @default(0)
+  errores      Int         @default(0)
+  nivel        String?
+  resultado    String?
+  palabra1     String?
+  palabra2     String?
+  palabra3     String?
+  detalles     SesionVocabulario[]
+
+  @@index([estudianteId])
+  @@index([actividad])
 }
 
 model SesionVocabulario {
@@ -65,4 +142,6 @@ model SesionVocabulario {
   mostrada       Boolean          @default(false)
   acierto        Boolean          @default(false)
   tiempo_ms      Int?
+
+  @@index([sesionId])
 }

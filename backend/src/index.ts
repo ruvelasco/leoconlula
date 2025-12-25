@@ -2,12 +2,15 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
-import { PrismaClient } from '@prisma/client';
 import dotenv from 'dotenv';
 import multer from 'multer';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
+import prisma from './config/database.js';
+import authRoutes from './routes/auth.routes.js';
+import estudianteRoutes from './routes/estudiante.routes.js';
+import { authenticate } from './middleware/auth.js';
 
 console.log('🚀 Starting LeoConLula Backend...');
 dotenv.config();
@@ -16,10 +19,9 @@ console.log('✅ Environment loaded');
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-console.log('📦 Initializing Express and Prisma...');
+console.log('📦 Initializing Express...');
 const app = express();
-const prisma = new PrismaClient();
-console.log('✅ Express and Prisma initialized');
+console.log('✅ Express initialized');
 
 // Configurar multer para almacenamiento de archivos
 const uploadsDir = path.join(__dirname, '../uploads');
@@ -59,6 +61,7 @@ const upload = multer({
   }
 });
 
+// Middleware
 app.use(helmet());
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
@@ -68,124 +71,20 @@ app.use('/uploads', express.static(uploadsDir));
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 8080;
 
+// Health check
 app.get('/health', (_req, res) => {
-  res.json({ status: 'ok' });
+  res.json({ status: 'ok', message: 'LeoConLula API is running' });
 });
 
-// Usuarios
-app.post('/usuarios', async (req, res) => {
-  try {
-    const user = await prisma.usuario.create({ data: req.body });
-    res.status(201).json(user);
-  } catch (err) {
-    res.status(400).json({ error: (err as Error).message });
-  }
-});
+// ==================== AUTHENTICATION ROUTES ====================
+app.use('/auth', authRoutes);
 
-app.get('/usuarios', async (_req, res) => {
-  const users = await prisma.usuario.findMany();
-  res.json(users);
-});
+// ==================== PROTECTED ROUTES ====================
+app.use('/api/estudiantes', estudianteRoutes);
 
-app.delete('/usuarios/:id', async (req, res) => {
-  const id = Number(req.params.id);
-  try {
-    await prisma.sesionVocabulario.deleteMany({ where: { sesion: { userId: id } } });
-    await prisma.actividadSesion.deleteMany({ where: { userId: id } });
-    await prisma.vocabulario.deleteMany({ where: { usuarioId: id } });
-    await prisma.usuario.delete({ where: { id } });
-    res.status(204).send();
-  } catch (err) {
-    res.status(400).json({ error: (err as Error).message });
-  }
-});
-
-app.patch('/usuarios/:id/campos', async (req, res) => {
-  const id = Number(req.params.id);
-  try {
-    const user = await prisma.usuario.update({ where: { id }, data: req.body });
-    res.json(user);
-  } catch (err) {
-    res.status(400).json({ error: (err as Error).message });
-  }
-});
-
-app.get('/usuarios/:id/orden-actividades', async (req, res) => {
-  const id = Number(req.params.id);
-  try {
-    const user = await prisma.usuario.findUnique({
-      where: { id },
-      select: { orden_actividades: true }
-    });
-    const orden = user?.orden_actividades?.split(',') || [
-      'aprendizaje',
-      'discriminacion',
-      'discriminacion_inversa',
-      'silabas',
-      'arrastre',
-      'doble',
-      'silabas_orden',
-      'silabas_distrac'
-    ];
-    res.json(orden);
-  } catch (err) {
-    res.status(400).json({ error: (err as Error).message });
-  }
-});
-
-app.patch('/usuarios/:id/orden-actividades', async (req, res) => {
-  const id = Number(req.params.id);
-  const { orden } = req.body; // Array de strings
-  try {
-    const user = await prisma.usuario.update({
-      where: { id },
-      data: { orden_actividades: orden.join(',') }
-    });
-    res.json(user);
-  } catch (err) {
-    res.status(400).json({ error: (err as Error).message });
-  }
-});
-
-app.get('/usuarios/:id/actividades-habilitadas', async (req, res) => {
-  const id = Number(req.params.id);
-  try {
-    const user = await prisma.usuario.findUnique({
-      where: { id },
-      select: { actividades_habilitadas: true }
-    });
-    const habilitadas = user?.actividades_habilitadas?.split(',') || [
-      'aprendizaje',
-      'discriminacion',
-      'discriminacion_inversa',
-      'silabas',
-      'arrastre',
-      'doble',
-      'silabas_orden',
-      'silabas_distrac'
-    ];
-    res.json(habilitadas);
-  } catch (err) {
-    res.status(400).json({ error: (err as Error).message });
-  }
-});
-
-app.patch('/usuarios/:id/actividades-habilitadas', async (req, res) => {
-  const id = Number(req.params.id);
-  const { actividades } = req.body; // Array de strings
-  try {
-    const user = await prisma.usuario.update({
-      where: { id },
-      data: { actividades_habilitadas: actividades.join(',') }
-    });
-    res.json(user);
-  } catch (err) {
-    res.status(400).json({ error: (err as Error).message });
-  }
-});
-
-// Vocabulario
-app.post('/vocabulario', async (req, res) => {
+// ==================== VOCABULARIO ROUTES ====================
+// Vocabulario endpoints (protected)
+app.post('/api/vocabulario', authenticate, async (req, res) => {
   try {
     const item = await prisma.vocabulario.create({ data: req.body });
     res.status(201).json(item);
@@ -194,20 +93,63 @@ app.post('/vocabulario', async (req, res) => {
   }
 });
 
-app.get('/vocabulario', async (req, res) => {
-  const userId = req.query.userId ? Number(req.query.userId) : undefined;
-  const items = await prisma.vocabulario.findMany({ where: { usuarioId: userId } });
-  // Agregar idUsuario para compatibilidad con Flutter (SQLite usa idUsuario)
-  const itemsCompat = items.map((item: any) => ({
-    ...item,
-    idUsuario: item.usuarioId
-  }));
-  res.json(itemsCompat);
+app.get('/api/vocabulario', authenticate, async (req, res) => {
+  try {
+    const estudianteId = req.query.estudianteId ? Number(req.query.estudianteId) : undefined;
+
+    if (!req.user) {
+      res.status(401).json({ error: 'No autenticado' });
+      return;
+    }
+
+    // Verify student is assigned to current user
+    if (estudianteId) {
+      const asignacion = await prisma.estudianteAsignacion.findFirst({
+        where: {
+          authUserId: req.user.userId,
+          estudianteId,
+        },
+      });
+
+      if (!asignacion) {
+        res.status(403).json({ error: 'Acceso denegado a este estudiante' });
+        return;
+      }
+    }
+
+    const items = await prisma.vocabulario.findMany({
+      where: { estudianteId }
+    });
+
+    res.json(items);
+  } catch (err) {
+    res.status(400).json({ error: (err as Error).message });
+  }
 });
 
-app.delete('/vocabulario/:id', async (req, res) => {
-  const id = Number(req.params.id);
+app.delete('/api/vocabulario/:id', authenticate, async (req, res) => {
   try {
+    const id = Number(req.params.id);
+
+    // Verify ownership
+    const item = await prisma.vocabulario.findUnique({ where: { id } });
+    if (!item || !item.estudianteId) {
+      res.status(404).json({ error: 'Vocabulario no encontrado' });
+      return;
+    }
+
+    const asignacion = await prisma.estudianteAsignacion.findFirst({
+      where: {
+        authUserId: req.user!.userId,
+        estudianteId: item.estudianteId,
+      },
+    });
+
+    if (!asignacion) {
+      res.status(403).json({ error: 'Acceso denegado' });
+      return;
+    }
+
     await prisma.sesionVocabulario.deleteMany({ where: { vocabularioId: id } });
     await prisma.vocabulario.delete({ where: { id } });
     res.status(204).send();
@@ -216,13 +158,28 @@ app.delete('/vocabulario/:id', async (req, res) => {
   }
 });
 
-// Sesiones
-app.post('/sesiones', async (req, res) => {
+// ==================== SESIONES ROUTES ====================
+// Sesiones endpoints (protected)
+app.post('/api/sesiones', authenticate, async (req, res) => {
   try {
-    const { userId, actividad, inicio_at, nivel, palabras = [] } = req.body;
+    const { estudianteId, actividad, inicio_at, nivel, palabras = [] } = req.body;
+
+    // Verify student is assigned to current user
+    const asignacion = await prisma.estudianteAsignacion.findFirst({
+      where: {
+        authUserId: req.user!.userId,
+        estudianteId,
+      },
+    });
+
+    if (!asignacion) {
+      res.status(403).json({ error: 'Acceso denegado a este estudiante' });
+      return;
+    }
+
     const inicio = inicio_at ?? Date.now();
     const data: any = {
-      userId,
+      estudianteId,
       actividad,
       inicio_at: BigInt(inicio),
       nivel,
@@ -237,21 +194,39 @@ app.post('/sesiones', async (req, res) => {
   }
 });
 
-app.patch('/sesiones/:id/finalizar', async (req, res) => {
-  const id = Number(req.params.id);
-  const { fin_at, aciertos, errores, resultado, duracion_ms } = req.body;
+app.patch('/api/sesiones/:id/finalizar', authenticate, async (req, res) => {
   try {
+    const id = Number(req.params.id);
+    const { fin_at, aciertos, errores, resultado, duracion_ms } = req.body;
+
+    // Verify ownership
+    const sesion = await prisma.actividadSesion.findUnique({ where: { id } });
+    if (!sesion) {
+      res.status(404).json({ error: 'Sesión no encontrada' });
+      return;
+    }
+
+    const asignacion = await prisma.estudianteAsignacion.findFirst({
+      where: {
+        authUserId: req.user!.userId,
+        estudianteId: sesion.estudianteId,
+      },
+    });
+
+    if (!asignacion) {
+      res.status(403).json({ error: 'Acceso denegado' });
+      return;
+    }
+
     let duracion = duracion_ms;
     let finValue: bigint | undefined;
     if (fin_at != null) {
       finValue = BigInt(fin_at);
-      if (duracion == null) {
-        const sesion = await prisma.actividadSesion.findUnique({ where: { id } });
-        if (sesion?.inicio_at) {
-          duracion = Number(finValue - sesion.inicio_at);
-        }
+      if (duracion == null && sesion.inicio_at) {
+        duracion = Number(finValue - sesion.inicio_at);
       }
     }
+
     const updated = await prisma.actividadSesion.update({
       where: { id },
       data: {
@@ -268,10 +243,11 @@ app.patch('/sesiones/:id/finalizar', async (req, res) => {
   }
 });
 
-app.post('/sesiones/:id/detalle', async (req, res) => {
-  const sesionId = Number(req.params.id);
-  const { vocabularioId, mostrada = false, acierto = false, tiempo_ms } = req.body;
+app.post('/api/sesiones/:id/detalle', authenticate, async (req, res) => {
   try {
+    const sesionId = Number(req.params.id);
+    const { vocabularioId, mostrada = false, acierto = false, tiempo_ms } = req.body;
+
     const detalle = await prisma.sesionVocabulario.create({
       data: {
         sesionId,
@@ -287,9 +263,10 @@ app.post('/sesiones/:id/detalle', async (req, res) => {
   }
 });
 
-app.delete('/sesiones/:id', async (req, res) => {
-  const id = Number(req.params.id);
+app.delete('/api/sesiones/:id', authenticate, async (req, res) => {
   try {
+    const id = Number(req.params.id);
+
     await prisma.sesionVocabulario.deleteMany({ where: { sesionId: id } });
     await prisma.actividadSesion.delete({ where: { id } });
     res.status(204).send();
@@ -298,19 +275,86 @@ app.delete('/sesiones/:id', async (req, res) => {
   }
 });
 
-app.delete('/sesiones', async (req, res) => {
-  const userId = req.query.userId ? Number(req.query.userId) : undefined;
+app.delete('/api/sesiones', authenticate, async (req, res) => {
   try {
-    await prisma.sesionVocabulario.deleteMany({ where: { sesion: userId ? { userId } : undefined } });
-    await prisma.actividadSesion.deleteMany({ where: userId ? { userId } : {} });
+    const estudianteId = req.query.estudianteId ? Number(req.query.estudianteId) : undefined;
+
+    if (estudianteId) {
+      // Verify student is assigned to current user
+      const asignacion = await prisma.estudianteAsignacion.findFirst({
+        where: {
+          authUserId: req.user!.userId,
+          estudianteId,
+        },
+      });
+
+      if (!asignacion) {
+        res.status(403).json({ error: 'Acceso denegado a este estudiante' });
+        return;
+      }
+    }
+
+    await prisma.sesionVocabulario.deleteMany({
+      where: { sesion: estudianteId ? { estudianteId } : undefined }
+    });
+    await prisma.actividadSesion.deleteMany({
+      where: estudianteId ? { estudianteId } : {}
+    });
     res.status(204).send();
   } catch (err) {
     res.status(400).json({ error: (err as Error).message });
   }
 });
 
-// Upload de archivos
-app.post('/upload', upload.single('file'), (req, res) => {
+app.get('/api/sesiones', authenticate, async (req, res) => {
+  try {
+    const { estudianteId, actividad } = req.query;
+    const where: any = {};
+
+    if (estudianteId) {
+      const id = Number(estudianteId);
+
+      // Verify student is assigned to current user
+      const asignacion = await prisma.estudianteAsignacion.findFirst({
+        where: {
+          authUserId: req.user!.userId,
+          estudianteId: id,
+        },
+      });
+
+      if (!asignacion) {
+        res.status(403).json({ error: 'Acceso denegado a este estudiante' });
+        return;
+      }
+
+      where.estudianteId = id;
+    }
+
+    if (actividad) where.actividad = actividad as string;
+
+    const sesiones = await prisma.actividadSesion.findMany({
+      where,
+      include: {
+        detalles: true,
+        estudiante: {
+          select: {
+            id: true,
+            nombre: true
+          }
+        }
+      },
+      orderBy: {
+        inicio_at: 'desc'
+      }
+    });
+    res.json(sesiones);
+  } catch (err) {
+    res.status(400).json({ error: (err as Error).message });
+  }
+});
+
+// ==================== UPLOAD ROUTE ====================
+app.post('/upload', authenticate, upload.single('file'), (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No se subió ningún archivo' });
@@ -329,39 +373,92 @@ app.post('/upload', upload.single('file'), (req, res) => {
   }
 });
 
-// Get sesiones con filtros
-app.get('/sesiones', async (req, res) => {
-  try {
-    const { userId, actividad } = req.query;
-    const where: any = {};
-    if (userId) where.userId = Number(userId);
-    if (actividad) where.actividad = actividad as string;
+// ==================== LEGACY COMPATIBILITY ROUTES ====================
+// These routes maintain backward compatibility with the Flutter app until it's updated
+// They map old endpoints to new ones
 
-    const sesiones = await prisma.actividadSesion.findMany({
-      where,
-      include: {
-        detalles: true,
-        user: {
-          select: {
-            id: true,
-            nombre: true
-          }
-        }
-      },
-      orderBy: {
-        inicio_at: 'desc'
-      }
+// OLD: GET /usuarios -> NEW: GET /api/estudiantes
+app.get('/usuarios', authenticate, async (req, res) => {
+  try {
+    const asignaciones = await prisma.estudianteAsignacion.findMany({
+      where: { authUserId: req.user!.userId },
+      include: { estudiante: true },
     });
-    res.json(sesiones);
+    const estudiantes = asignaciones.map(a => a.estudiante);
+    res.json(estudiantes);
   } catch (err) {
     res.status(400).json({ error: (err as Error).message });
   }
 });
 
+// OLD: POST /usuarios -> NEW: POST /api/estudiantes
+app.post('/usuarios', authenticate, async (req, res) => {
+  try {
+    const estudiante = await prisma.estudiante.create({ data: req.body });
+    await prisma.estudianteAsignacion.create({
+      data: {
+        authUserId: req.user!.userId,
+        estudianteId: estudiante.id,
+        role: 'TUTOR',
+        createdBy: req.user!.userId,
+      },
+    });
+    res.status(201).json(estudiante);
+  } catch (err) {
+    res.status(400).json({ error: (err as Error).message });
+  }
+});
+
+// OLD: /vocabulario -> NEW: /api/vocabulario (with userId -> estudianteId mapping)
+app.get('/vocabulario', authenticate, async (req, res) => {
+  try {
+    // Support both userId (legacy) and estudianteId (new)
+    const estudianteId = req.query.estudianteId
+      ? Number(req.query.estudianteId)
+      : req.query.userId
+        ? Number(req.query.userId)
+        : undefined;
+
+    if (estudianteId) {
+      const asignacion = await prisma.estudianteAsignacion.findFirst({
+        where: {
+          authUserId: req.user!.userId,
+          estudianteId,
+        },
+      });
+
+      if (!asignacion) {
+        res.status(403).json({ error: 'Acceso denegado a este estudiante' });
+        return;
+      }
+    }
+
+    const items = await prisma.vocabulario.findMany({ where: { estudianteId } });
+
+    // Add idUsuario for compatibility with Flutter SQLite
+    const itemsCompat = items.map((item: any) => ({
+      ...item,
+      idUsuario: item.estudianteId,
+      usuarioId: item.estudianteId, // For backward compatibility
+    }));
+
+    res.json(itemsCompat);
+  } catch (err) {
+    res.status(400).json({ error: (err as Error).message });
+  }
+});
+
+// 404 handler
 app.use((_req, res) => {
   res.status(404).json({ error: 'Not found' });
 });
 
+// Start server
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`API listening on port ${PORT}`);
+  console.log(`✅ API listening on port ${PORT}`);
+  console.log(`📍 Base URL: http://localhost:${PORT}`);
+  console.log(`🔐 Authentication: /auth/login, /auth/register`);
+  console.log(`👨‍🎓 Estudiantes: /api/estudiantes`);
+  console.log(`📚 Vocabulario: /api/vocabulario`);
+  console.log(`📊 Sesiones: /api/sesiones`);
 });

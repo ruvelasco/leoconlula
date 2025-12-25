@@ -117,6 +117,7 @@ class _DemoDragTargetState extends State<DemoDragTarget> {
   int errores = 0; // Contador de errores
 
   void _handleAccept(int indexEnFila, String palabra) async {
+    debugPrint('🎯 DISCRIMINACION: _handleAccept llamado - indexEnFila=$indexEnFila, palabra=$palabra');
     setState(() {
       palabrasSoltadas = [null, null, null];
       palabrasSoltadas[indexEnFila] = palabra;
@@ -124,11 +125,14 @@ class _DemoDragTargetState extends State<DemoDragTarget> {
     });
 
     final labelTarget = tarjetas[orden[indexEnFila]]['label'] ?? '';
+    debugPrint('🎯 DISCRIMINACION: labelTarget=$labelTarget, zonaCorrecta=$zonaCorrecta, orden[indexEnFila]=${orden[indexEnFila]}');
 
     if (orden[indexEnFila] == zonaCorrecta) {
+      debugPrint('✅ DISCRIMINACION: ACIERTO! Incrementando aciertos de $aciertos a ${aciertos + 1}');
       await _incrementarAcierto(labelTarget);
       aciertos++;
       errores = 0;
+      debugPrint('✅ DISCRIMINACION: aciertos=$aciertos, maxAciertos=$maxAciertos');
       await refuerzo.reproducirAplauso();
       if (aciertos >= maxAciertos) {
         await _finalizarActividad();
