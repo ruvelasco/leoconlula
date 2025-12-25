@@ -140,6 +140,85 @@ class ApiService {
     }
   }
 
+  // ==================== COMPARTIR ESTUDIANTES ====================
+
+  /// Compartir un estudiante con otro usuario por email
+  static Future<Map<String, dynamic>> compartirEstudiante(int estudianteId, String email, {String role = 'TUTOR'}) async {
+    try {
+      debugPrint('📤 Compartiendo estudiante $estudianteId con $email');
+      final headers = await _getHeaders();
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/estudiantes/$estudianteId/compartir'),
+        headers: headers,
+        body: jsonEncode({
+          'email': email,
+          'role': role,
+        }),
+      );
+
+      debugPrint('📥 Status: ${response.statusCode}');
+      debugPrint('📥 Body: ${response.body}');
+
+      if (response.statusCode == 201) {
+        final result = jsonDecode(response.body);
+        debugPrint('✅ Estudiante compartido exitosamente');
+        return result;
+      } else {
+        final error = jsonDecode(response.body);
+        throw Exception(error['error'] ?? 'Error al compartir estudiante');
+      }
+    } catch (e) {
+      debugPrint('❌ Error en compartirEstudiante: $e');
+      rethrow;
+    }
+  }
+
+  /// Obtener lista de usuarios con acceso a un estudiante
+  static Future<List<Map<String, dynamic>>> obtenerUsuariosCompartidos(int estudianteId) async {
+    try {
+      debugPrint('📤 Obteniendo usuarios compartidos para estudiante $estudianteId');
+      final headers = await _getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/estudiantes/$estudianteId/compartidos'),
+        headers: headers,
+      );
+
+      debugPrint('📥 Status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        debugPrint('✅ ${data.length} usuarios compartidos obtenidos');
+        return data.cast<Map<String, dynamic>>();
+      } else {
+        throw Exception('Error al obtener usuarios compartidos: ${response.body}');
+      }
+    } catch (e) {
+      debugPrint('❌ Error en obtenerUsuariosCompartidos: $e');
+      return [];
+    }
+  }
+
+  /// Eliminar acceso de un usuario a un estudiante
+  static Future<void> eliminarAccesoEstudiante(int estudianteId, int userId) async {
+    try {
+      debugPrint('📤 Eliminando acceso del usuario $userId al estudiante $estudianteId');
+      final headers = await _getHeaders();
+      final response = await http.delete(
+        Uri.parse('$baseUrl/api/estudiantes/$estudianteId/compartir/$userId'),
+        headers: headers,
+      );
+
+      if (response.statusCode != 204) {
+        throw Exception('Error al eliminar acceso: ${response.body}');
+      }
+
+      debugPrint('✅ Acceso eliminado exitosamente');
+    } catch (e) {
+      debugPrint('❌ Error en eliminarAccesoEstudiante: $e');
+      rethrow;
+    }
+  }
+
   /// Actualizar un campo específico del usuario
   static Future<void> actualizarCampoUsuarioBool(int userId, String campo, bool valor) async {
     try {
