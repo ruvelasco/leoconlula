@@ -525,6 +525,170 @@ app.delete('/vocabulario/:id', authenticate, async (req, res) => {
   }
 });
 
+// ==================== COMPARTIR ESTUDIANTES ====================
+
+// Share student with another user by email
+app.post('/api/estudiantes/:id/compartir', authenticate, async (req, res) => {
+  try {
+    const estudianteId = Number(req.params.id);
+    const { email, role = 'TUTOR' } = req.body;
+
+    if (!email) {
+      res.status(400).json({ error: 'Email es requerido' });
+      return;
+    }
+
+    // Verify current user owns or has access to this student
+    const asignacion = await prisma.estudianteAsignacion.findFirst({
+      where: {
+        authUserId: req.user!.userId,
+        estudianteId,
+      },
+    });
+
+    if (!asignacion) {
+      res.status(403).json({ error: 'No tienes acceso a este estudiante' });
+      return;
+    }
+
+    // Find user by email
+    const targetUser = await prisma.authUser.findUnique({
+      where: { email: email.toLowerCase() },
+    });
+
+    if (!targetUser) {
+      res.status(404).json({ error: 'Usuario no encontrado con ese email' });
+      return;
+    }
+
+    // Check if already shared
+    const existingShare = await prisma.estudianteAsignacion.findFirst({
+      where: {
+        authUserId: targetUser.id,
+        estudianteId,
+      },
+    });
+
+    if (existingShare) {
+      res.status(400).json({ error: 'Este estudiante ya está compartido con ese usuario' });
+      return;
+    }
+
+    // Create assignment
+    const newAsignacion = await prisma.estudianteAsignacion.create({
+      data: {
+        authUserId: targetUser.id,
+        estudianteId,
+        role,
+        createdBy: req.user!.userId,
+      },
+      include: {
+        authUser: {
+          select: {
+            id: true,
+            nombre: true,
+            email: true,
+            role: true,
+          },
+        },
+      },
+    });
+
+    res.status(201).json({
+      success: true,
+      message: `Estudiante compartido con ${targetUser.nombre}`,
+      assignment: newAsignacion,
+    });
+  } catch (err) {
+    res.status(400).json({ error: (err as Error).message });
+  }
+});
+
+// Get list of users who have access to a student
+app.get('/api/estudiantes/:id/compartidos', authenticate, async (req, res) => {
+  try {
+    const estudianteId = Number(req.params.id);
+
+    // Verify current user has access to this student
+    const asignacion = await prisma.estudianteAsignacion.findFirst({
+      where: {
+        authUserId: req.user!.userId,
+        estudianteId,
+      },
+    });
+
+    if (!asignacion) {
+      res.status(403).json({ error: 'No tienes acceso a este estudiante' });
+      return;
+    }
+
+    // Get all users who have access
+    const asignaciones = await prisma.estudianteAsignacion.findMany({
+      where: { estudianteId },
+      include: {
+        authUser: {
+          select: {
+            id: true,
+            nombre: true,
+            email: true,
+            role: true,
+          },
+        },
+      },
+    });
+
+    res.json(asignaciones.map(a => ({
+      userId: a.authUserId,
+      nombre: a.authUser.nombre,
+      email: a.authUser.email,
+      role: a.role,
+      isCreator: a.createdBy === req.user!.userId,
+      assignedAt: a.createdAt,
+    })));
+  } catch (err) {
+    res.status(400).json({ error: (err as Error).message });
+  }
+});
+
+// Remove user's access to a student
+app.delete('/api/estudiantes/:id/compartir/:userId', authenticate, async (req, res) => {
+  try {
+    const estudianteId = Number(req.params.id);
+    const targetUserId = Number(req.params.userId);
+
+    // Verify current user has access to this student
+    const asignacion = await prisma.estudianteAsignacion.findFirst({
+      where: {
+        authUserId: req.user!.userId,
+        estudianteId,
+      },
+    });
+
+    if (!asignacion) {
+      res.status(403).json({ error: 'No tienes acceso a este estudiante' });
+      return;
+    }
+
+    // Don't allow removing the creator's own access
+    if (targetUserId === req.user!.userId) {
+      res.status(400).json({ error: 'No puedes eliminar tu propio acceso' });
+      return;
+    }
+
+    // Delete the assignment
+    await prisma.estudianteAsignacion.deleteMany({
+      where: {
+        authUserId: targetUserId,
+        estudianteId,
+      },
+    });
+
+    res.status(204).send();
+  } catch (err) {
+    res.status(400).json({ error: (err as Error).message });
+  }
+});
+
 // 404 handler
 app.use((_req, res) => {
   res.status(404).json({ error: 'Not found' });
