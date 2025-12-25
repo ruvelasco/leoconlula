@@ -1,8 +1,10 @@
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class StorageService {
-  static const _storage = FlutterSecureStorage(
+  // Use secure storage for mobile, shared preferences for web
+  static const _secureStorage = FlutterSecureStorage(
     aOptions: AndroidOptions(
       encryptedSharedPreferences: true,
     ),
@@ -16,17 +18,31 @@ class StorageService {
   static const String _refreshTokenKey = 'refresh_token';
   static const String _userDataKey = 'user_data';
 
+  /// Get SharedPreferences instance (for web)
+  static Future<SharedPreferences> get _prefs async =>
+      await SharedPreferences.getInstance();
+
   /// Save access and refresh tokens
   static Future<void> saveTokens({
     required String accessToken,
     required String refreshToken,
   }) async {
     try {
-      await Future.wait([
-        _storage.write(key: _accessTokenKey, value: accessToken),
-        _storage.write(key: _refreshTokenKey, value: refreshToken),
-      ]);
-      debugPrint('✅ Tokens guardados exitosamente');
+      if (kIsWeb) {
+        // Use SharedPreferences for web (more reliable)
+        final prefs = await _prefs;
+        await Future.wait([
+          prefs.setString(_accessTokenKey, accessToken),
+          prefs.setString(_refreshTokenKey, refreshToken),
+        ]);
+      } else {
+        // Use secure storage for mobile
+        await Future.wait([
+          _secureStorage.write(key: _accessTokenKey, value: accessToken),
+          _secureStorage.write(key: _refreshTokenKey, value: refreshToken),
+        ]);
+      }
+      debugPrint('✅ Tokens guardados exitosamente (${kIsWeb ? 'web' : 'móvil'})');
     } catch (e) {
       debugPrint('❌ Error al guardar tokens: $e');
       rethrow;
@@ -36,7 +52,12 @@ class StorageService {
   /// Get access token
   static Future<String?> getAccessToken() async {
     try {
-      return await _storage.read(key: _accessTokenKey);
+      if (kIsWeb) {
+        final prefs = await _prefs;
+        return prefs.getString(_accessTokenKey);
+      } else {
+        return await _secureStorage.read(key: _accessTokenKey);
+      }
     } catch (e) {
       debugPrint('❌ Error al leer access token: $e');
       return null;
@@ -46,7 +67,12 @@ class StorageService {
   /// Get refresh token
   static Future<String?> getRefreshToken() async {
     try {
-      return await _storage.read(key: _refreshTokenKey);
+      if (kIsWeb) {
+        final prefs = await _prefs;
+        return prefs.getString(_refreshTokenKey);
+      } else {
+        return await _secureStorage.read(key: _refreshTokenKey);
+      }
     } catch (e) {
       debugPrint('❌ Error al leer refresh token: $e');
       return null;
@@ -56,20 +82,30 @@ class StorageService {
   /// Get both tokens
   static Future<Map<String, String>?> getTokens() async {
     try {
-      final results = await Future.wait([
-        _storage.read(key: _accessTokenKey),
-        _storage.read(key: _refreshTokenKey),
-      ]);
+      String? accessToken;
+      String? refreshToken;
 
-      final accessToken = results[0];
-      final refreshToken = results[1];
+      if (kIsWeb) {
+        final prefs = await _prefs;
+        accessToken = prefs.getString(_accessTokenKey);
+        refreshToken = prefs.getString(_refreshTokenKey);
+      } else {
+        final results = await Future.wait([
+          _secureStorage.read(key: _accessTokenKey),
+          _secureStorage.read(key: _refreshTokenKey),
+        ]);
+        accessToken = results[0];
+        refreshToken = results[1];
+      }
 
       if (accessToken != null && refreshToken != null) {
+        debugPrint('✅ Tokens encontrados en storage');
         return {
           'access': accessToken,
           'refresh': refreshToken,
         };
       }
+      debugPrint('⚠️ No se encontraron tokens en storage');
       return null;
     } catch (e) {
       debugPrint('❌ Error al leer tokens: $e');
@@ -80,7 +116,12 @@ class StorageService {
   /// Save user data (optional, for offline access)
   static Future<void> saveUserData(String userData) async {
     try {
-      await _storage.write(key: _userDataKey, value: userData);
+      if (kIsWeb) {
+        final prefs = await _prefs;
+        await prefs.setString(_userDataKey, userData);
+      } else {
+        await _secureStorage.write(key: _userDataKey, value: userData);
+      }
       debugPrint('✅ Datos de usuario guardados');
     } catch (e) {
       debugPrint('❌ Error al guardar datos de usuario: $e');
@@ -90,7 +131,12 @@ class StorageService {
   /// Get user data
   static Future<String?> getUserData() async {
     try {
-      return await _storage.read(key: _userDataKey);
+      if (kIsWeb) {
+        final prefs = await _prefs;
+        return prefs.getString(_userDataKey);
+      } else {
+        return await _secureStorage.read(key: _userDataKey);
+      }
     } catch (e) {
       debugPrint('❌ Error al leer datos de usuario: $e');
       return null;
@@ -100,11 +146,20 @@ class StorageService {
   /// Clear all tokens and user data
   static Future<void> clearAll() async {
     try {
-      await Future.wait([
-        _storage.delete(key: _accessTokenKey),
-        _storage.delete(key: _refreshTokenKey),
-        _storage.delete(key: _userDataKey),
-      ]);
+      if (kIsWeb) {
+        final prefs = await _prefs;
+        await Future.wait([
+          prefs.remove(_accessTokenKey),
+          prefs.remove(_refreshTokenKey),
+          prefs.remove(_userDataKey),
+        ]);
+      } else {
+        await Future.wait([
+          _secureStorage.delete(key: _accessTokenKey),
+          _secureStorage.delete(key: _refreshTokenKey),
+          _secureStorage.delete(key: _userDataKey),
+        ]);
+      }
       debugPrint('✅ Todos los datos de autenticación eliminados');
     } catch (e) {
       debugPrint('❌ Error al eliminar datos: $e');
@@ -115,10 +170,18 @@ class StorageService {
   /// Clear only tokens (keep user data)
   static Future<void> clearTokens() async {
     try {
-      await Future.wait([
-        _storage.delete(key: _accessTokenKey),
-        _storage.delete(key: _refreshTokenKey),
-      ]);
+      if (kIsWeb) {
+        final prefs = await _prefs;
+        await Future.wait([
+          prefs.remove(_accessTokenKey),
+          prefs.remove(_refreshTokenKey),
+        ]);
+      } else {
+        await Future.wait([
+          _secureStorage.delete(key: _accessTokenKey),
+          _secureStorage.delete(key: _refreshTokenKey),
+        ]);
+      }
       debugPrint('✅ Tokens eliminados');
     } catch (e) {
       debugPrint('❌ Error al eliminar tokens: $e');
