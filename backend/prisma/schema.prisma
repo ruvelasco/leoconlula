@@ -55,6 +55,7 @@ model RefreshToken {
 
 model Estudiante {
   id                      Int       @id @default(autoincrement())
+  codigoUnico             String?   @unique  // Código único para compartir (ej: LEO-ABC123)
   nombre                  String?
   foto                    String?
   fechaNacimiento         DateTime?
@@ -81,6 +82,7 @@ model Estudiante {
   updatedAt               DateTime  @updatedAt
 
   @@index([nombre])
+  @@index([codigoUnico])
 }
 
 model EstudianteAsignacion {

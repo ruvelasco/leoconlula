@@ -391,10 +391,34 @@ app.get('/usuarios', authenticate, async (req, res) => {
   }
 });
 
+// Generate unique student code (LEO-XXXXXX)
+function generarCodigoEstudiante(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Sin O, 0, I, 1 para evitar confusión
+  let codigo = 'LEO-';
+  for (let i = 0; i < 6; i++) {
+    codigo += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return codigo;
+}
+
 // OLD: POST /usuarios -> NEW: POST /api/estudiantes
 app.post('/usuarios', authenticate, async (req, res) => {
   try {
-    const estudiante = await prisma.estudiante.create({ data: req.body });
+    // Generate unique code for student
+    let codigoUnico = generarCodigoEstudiante();
+
+    // Ensure it's unique (extremely rare collision, but check anyway)
+    let intentos = 0;
+    while (intentos < 5) {
+      const existe = await prisma.estudiante.findUnique({ where: { codigoUnico } });
+      if (!existe) break;
+      codigoUnico = generarCodigoEstudiante();
+      intentos++;
+    }
+
+    const estudiante = await prisma.estudiante.create({
+      data: { ...req.body, codigoUnico }
+    });
     await prisma.estudianteAsignacion.create({
       data: {
         authUserId: req.user!.userId,
@@ -527,77 +551,53 @@ app.delete('/vocabulario/:id', authenticate, async (req, res) => {
 
 // ==================== COMPARTIR ESTUDIANTES ====================
 
-// Share student with another user by email
-app.post('/api/estudiantes/:id/compartir', authenticate, async (req, res) => {
+// Join a student using their unique code
+app.post('/api/estudiantes/unirse', authenticate, async (req, res) => {
   try {
-    const estudianteId = Number(req.params.id);
-    const { email, role = 'TUTOR' } = req.body;
+    const { codigo } = req.body;
 
-    if (!email) {
-      res.status(400).json({ error: 'Email es requerido' });
+    if (!codigo) {
+      res.status(400).json({ error: 'Código es requerido' });
       return;
     }
 
-    // Verify current user owns or has access to this student
-    const asignacion = await prisma.estudianteAsignacion.findFirst({
+    // Find student by code
+    const estudiante = await prisma.estudiante.findUnique({
+      where: { codigoUnico: codigo.toUpperCase().trim() },
+    });
+
+    if (!estudiante) {
+      res.status(404).json({ error: 'Código inválido o estudiante no encontrado' });
+      return;
+    }
+
+    // Check if already has access
+    const existingAccess = await prisma.estudianteAsignacion.findFirst({
       where: {
         authUserId: req.user!.userId,
-        estudianteId,
+        estudianteId: estudiante.id,
       },
     });
 
-    if (!asignacion) {
-      res.status(403).json({ error: 'No tienes acceso a este estudiante' });
-      return;
-    }
-
-    // Find user by email
-    const targetUser = await prisma.authUser.findUnique({
-      where: { email: email.toLowerCase() },
-    });
-
-    if (!targetUser) {
-      res.status(404).json({ error: 'Usuario no encontrado con ese email' });
-      return;
-    }
-
-    // Check if already shared
-    const existingShare = await prisma.estudianteAsignacion.findFirst({
-      where: {
-        authUserId: targetUser.id,
-        estudianteId,
-      },
-    });
-
-    if (existingShare) {
-      res.status(400).json({ error: 'Este estudiante ya está compartido con ese usuario' });
+    if (existingAccess) {
+      res.status(400).json({ error: 'Ya tienes acceso a este estudiante' });
       return;
     }
 
     // Create assignment
-    const newAsignacion = await prisma.estudianteAsignacion.create({
+    const asignacion = await prisma.estudianteAsignacion.create({
       data: {
-        authUserId: targetUser.id,
-        estudianteId,
-        role,
+        authUserId: req.user!.userId,
+        estudianteId: estudiante.id,
+        role: 'TUTOR',
         createdBy: req.user!.userId,
-      },
-      include: {
-        authUser: {
-          select: {
-            id: true,
-            nombre: true,
-            email: true,
-            role: true,
-          },
-        },
       },
     });
 
     res.status(201).json({
       success: true,
-      message: `Estudiante compartido con ${targetUser.nombre}`,
-      assignment: newAsignacion,
+      message: `Te has unido exitosamente a ${estudiante.nombre || 'el estudiante'}`,
+      estudiante,
     });
   } catch (err) {
     res.status(400).json({ error: (err as Error).message });
