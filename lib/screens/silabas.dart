@@ -23,6 +23,7 @@ class _SilabasPageState extends State<SilabasPage> {
   List<String> silabas = [];
   List<String?> huecos = [];
   List<String> silabasDisponibles = [];
+  List<Map<String, dynamic>> palabrasDisponibles = [];
 
   int aciertos = 0;
   int maxAciertos = 5;
@@ -58,16 +59,58 @@ class _SilabasPageState extends State<SilabasPage> {
   }
 
   Future<void> _cargarPalabra() async {
-    _userId ??= widget.userId ?? await _resolverUserId();
-    debugPrint('🔍 SILABAS: Cargando vocabulario para usuario $_userId');
+    try {
+      debugPrint('🔄 SILABAS: _cargarPalabra() iniciando... palabrasDisponibles.length=${palabrasDisponibles.length}');
+      _userId ??= widget.userId ?? await _resolverUserId();
+      debugPrint('🔍 SILABAS: Cargando vocabulario para usuario $_userId');
 
-    final resultado = await DataService.obtenerVocabulario(userId: _userId);
-    debugPrint('📚 SILABAS: ${resultado.length} palabras cargadas');
+      // Si no hay palabras disponibles, cargar todas
+      if (palabrasDisponibles.isEmpty) {
+        debugPrint('📥 SILABAS: palabrasDisponibles vacío, recargando desde API...');
+        final resultado = await DataService.obtenerVocabulario(userId: _userId);
+        debugPrint('📚 SILABAS: ${resultado.length} palabras cargadas desde API/DB');
 
-    if (resultado.isNotEmpty) {
-      final item = resultado.first;
-      final sils = (item['silabas'] as String).split('*');
+        // Filtrar solo palabras que tengan sílabas definidas
+        palabrasDisponibles = resultado.where((item) {
+          final silabas = item['silabas'];
+          debugPrint('   - ${item['label']}: silabas="$silabas" (tipo: ${silabas.runtimeType})');
+          return silabas != null && silabas.toString().isNotEmpty;
+        }).toList();
+
+        debugPrint('📚 SILABAS: ${palabrasDisponibles.length} palabras con sílabas disponibles');
+        palabrasDisponibles.shuffle();
+        debugPrint('🔀 SILABAS: Palabras mezcladas');
+      } else {
+        debugPrint('♻️ SILABAS: Usando palabras disponibles existentes (${palabrasDisponibles.length} restantes)');
+      }
+
+      if (palabrasDisponibles.isEmpty) {
+        debugPrint('❌ SILABAS: No hay palabras con sílabas disponibles');
+        return;
+      }
+
+      // Tomar la primera palabra disponible y removerla
+      final item = palabrasDisponibles.removeAt(0);
+      debugPrint('✅ SILABAS: Cargando palabra: ${item['label']} (ID: ${item['id']}), silabas="${item['silabas']}"');
+      debugPrint('   Palabras restantes: ${palabrasDisponibles.length}');
+
+      final silabasString = item['silabas']?.toString() ?? '';
+      final sils = silabasString.split('*').where((s) => s.isNotEmpty).toList();
+      debugPrint('   Sílabas separadas: $sils');
+
+      if (sils.isEmpty) {
+        debugPrint('⚠️ SILABAS: La palabra ${item['label']} no tiene sílabas válidas, saltando...');
+        return _cargarPalabra(); // Intentar con la siguiente palabra
+      }
+
       await _iniciarSesionSiNoExiste(palabras: [(item['label'] ?? '').toString()]);
+
+      debugPrint('🎨 SILABAS: Actualizando UI con setState...');
+      if (!mounted) {
+        debugPrint('⚠️ SILABAS: Widget no montado, cancelando setState');
+        return;
+      }
+
       setState(() {
         palabra = item;
         silabas = sils;
@@ -75,33 +118,51 @@ class _SilabasPageState extends State<SilabasPage> {
         silabasDisponibles = List<String>.from(sils);
         silabasDisponibles.shuffle();
       });
+      debugPrint('✨ SILABAS: UI actualizada correctamente');
+    } catch (e, stackTrace) {
+      debugPrint('❌ SILABAS: Error en _cargarPalabra(): $e');
+      debugPrint('Stack trace: $stackTrace');
     }
   }
 
   void _onAccept(int index, String silaba) async {
+    debugPrint('🎯 SILABAS: _onAccept llamado - index=$index, silaba=$silaba');
     setState(() {
       huecos[index] = silaba;
       silabasDisponibles.remove(silaba);
     });
 
     if (!huecos.contains(null)) {
+      debugPrint('🎯 SILABAS: Todos los huecos llenos, verificando respuesta...');
       final correcto = List.generate(silabas.length > 3 ? 3 : silabas.length, (i) => silabas[i]);
       final usuario = List.generate(huecos.length, (i) => huecos[i]);
+      debugPrint('   Correcto: $correcto');
+      debugPrint('   Usuario:  $usuario');
+
       if (listEquals(correcto, usuario)) {
+        debugPrint('✅ SILABAS: ¡CORRECTO! Aciertos: $aciertos -> ${aciertos + 1}');
         await refuerzo.reproducirAplauso();
         setState(() {
           aciertos++;
         });
+
         if (aciertos >= maxAciertos) {
+          debugPrint('🎊 SILABAS: Alcanzado máximo de aciertos ($maxAciertos), finalizando actividad...');
           await _finalizarActividad();
         } else {
+          debugPrint('⏳ SILABAS: Programando carga de nueva palabra en 900ms...');
           Future.delayed(const Duration(milliseconds: 900), () {
+            debugPrint('⏰ SILABAS: Timer completado, verificando si mounted...');
             if (mounted) {
+              debugPrint('✅ SILABAS: Widget montado, llamando _cargarPalabra()...');
               _cargarPalabra();
+            } else {
+              debugPrint('❌ SILABAS: Widget NO montado, cancelando carga');
             }
           });
         }
       } else {
+        debugPrint('❌ SILABAS: INCORRECTO - incrementando errores');
         await refuerzo.reproducirError();
         erroresTotales++;
         Future.delayed(const Duration(seconds: 1), () {
