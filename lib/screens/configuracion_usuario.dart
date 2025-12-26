@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import '../widgets/fondo_inicio.dart';
@@ -22,6 +23,7 @@ class _ConfiguracionUsuarioPageState extends State<ConfiguracionUsuarioPage> {
   String fuenteSeleccionada = 'ARIAL'; // <--- Añade esto
   String vozSeleccionada = 'MONICA'; // Valor por defecto
   String? fotoUsuario;
+  String? codigoUnico; // Código único del estudiante
   int numeroRepeticiones = 5;
   Map<String, bool> config = {
     'leer_palabras': true,
@@ -82,6 +84,7 @@ class _ConfiguracionUsuarioPageState extends State<ConfiguracionUsuarioPage> {
             usuario['fuente'] ?? 'ARIAL'; // <--- Carga la fuente
         vozSeleccionada = usuario['voz'] ?? 'MONICA'; // <--- Añade esto
         fotoUsuario = usuario['foto']; // <-- Añade esto
+        codigoUnico = usuario['codigoUnico']; // Cargar código único
         numeroRepeticiones = (usuario['numero_repeticiones'] ?? 5) as int;
         config = {
           'leer_palabras': (usuario['leer_palabras'] ?? 1) == 1,
@@ -370,6 +373,82 @@ class _ConfiguracionUsuarioPageState extends State<ConfiguracionUsuarioPage> {
     }
   }
 
+  void _mostrarCodigoEstudiante() {
+    if (codigoUnico == null || codigoUnico!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Este estudiante no tiene código asignado'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text(
+            'Código del Estudiante',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Comparte este código con otro usuario para que pueda acceder a este estudiante:',
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color.fromRGBO(63, 46, 31, 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: const Color.fromRGBO(63, 46, 31, 1),
+                    width: 2,
+                  ),
+                ),
+                child: SelectableText(
+                  codigoUnico!,
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 2,
+                    color: Color.fromRGBO(63, 46, 31, 1),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                // Copiar al portapapeles
+                final data = ClipboardData(text: codigoUnico!);
+                Clipboard.setData(data);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Código copiado al portapapeles'),
+                    backgroundColor: Colors.green,
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              },
+              child: const Text('Copiar'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cerrar'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final double anchoPantalla = MediaQuery.of(context).size.width;
@@ -575,6 +654,13 @@ class _ConfiguracionUsuarioPageState extends State<ConfiguracionUsuarioPage> {
                               // Aquí irá la navegación a la página PDF
                               // Navigator.push(context, MaterialPageRoute(builder: (_) => PdfPage()));
                             },
+                          ),
+                          _ConfigButton(
+                            icon: Icons.share,
+                            title: 'CÓDIGO COMPARTIR',
+                            value: false,
+                            color: Colors.blue[700],
+                            onTap: _mostrarCodigoEstudiante,
                           ),
                           _ConfigButton(
                             icon: Icons.repeat,
