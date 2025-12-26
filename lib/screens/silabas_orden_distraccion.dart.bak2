@@ -8,21 +8,20 @@ import 'package:leoconlula/widgets/avatar_usuario.dart';
 import 'package:leoconlula/widgets/refuerzo.dart';
 import 'package:leoconlula/helpers/db_helper.dart';
 
-class SilabasOrdenPage extends StatefulWidget {
+class SilabasOrdenDistraccionPage extends StatefulWidget {
   final int? userId;
 
-  const SilabasOrdenPage({super.key, this.userId});
+  const SilabasOrdenDistraccionPage({super.key, this.userId});
 
   @override
-  State<SilabasOrdenPage> createState() => _SilabasOrdenPageState();
+  State<SilabasOrdenDistraccionPage> createState() => _SilabasOrdenDistraccionPageState();
 }
 
-class _SilabasOrdenPageState extends State<SilabasOrdenPage> {
+class _SilabasOrdenDistraccionPageState extends State<SilabasOrdenDistraccionPage> {
   Map<String, dynamic>? palabra;
   List<String> silabas = [];
   List<String?> huecos = [];
   List<String> silabasDisponibles = [];
-  List<Map<String, dynamic>> palabrasDisponibles = [];
 
   int aciertos = 0;
   int maxAciertos = 5;
@@ -33,6 +32,28 @@ class _SilabasOrdenPageState extends State<SilabasOrdenPage> {
 
   late RefuerzoController refuerzo;
   late ConfettiController _confettiController;
+
+  // Sílabas comunes en español para usar como distracción
+  final List<String> silabasDistraccion = [
+    'ma', 'me', 'mi', 'mo', 'mu',
+    'pa', 'pe', 'pi', 'po', 'pu',
+    'sa', 'se', 'si', 'so', 'su',
+    'ta', 'te', 'ti', 'to', 'tu',
+    'la', 'le', 'li', 'lo', 'lu',
+    'ra', 're', 'ri', 'ro', 'ru',
+    'ca', 'co', 'cu', 'que', 'qui',
+    'ga', 'go', 'gu', 'gue', 'gui',
+    'na', 'ne', 'ni', 'no', 'nu',
+    'da', 'de', 'di', 'do', 'du',
+    'ba', 'be', 'bi', 'bo', 'bu',
+    'cha', 'che', 'chi', 'cho', 'chu',
+    'ja', 'je', 'ji', 'jo', 'ju',
+    'ña', 'ñe', 'ñi', 'ño', 'ñu',
+    'va', 've', 'vi', 'vo', 'vu',
+    'za', 'ce', 'ci', 'zo', 'zu',
+    'fa', 'fe', 'fi', 'fo', 'fu',
+    'lla', 'lle', 'lli', 'llo', 'llu',
+  ];
 
   @override
   void initState() {
@@ -58,50 +79,37 @@ class _SilabasOrdenPageState extends State<SilabasOrdenPage> {
   }
 
   Future<void> _cargarPalabra() async {
-    _userId ??= widget.userId ?? await _resolverUserId();
-    debugPrint('🔍 SILABAS_ORDEN: Cargando vocabulario para usuario $_userId');
+    _userId ??= await _resolverUserId();
+    debugPrint('🔍 SILABAS_ORDEN_DISTRACCION: Cargando vocabulario para usuario $_userId');
 
-    // Si no hay palabras disponibles, cargar todas
-    if (palabrasDisponibles.isEmpty) {
-      final resultado = await DataService.obtenerVocabulario(userId: _userId);
-      debugPrint('📚 SILABAS_ORDEN: ${resultado.length} palabras cargadas desde API/DB');
+    final resultado = await DataService.obtenerVocabulario(userId: _userId);
+    debugPrint('📚 SILABAS_ORDEN_DISTRACCION: ${resultado.length} palabras cargadas');
 
-      // Filtrar solo palabras que tengan sílabas definidas
-      palabrasDisponibles = resultado.where((item) {
-        final silabas = item['silabas'];
-        return silabas != null && silabas.toString().isNotEmpty;
-      }).toList();
+    if (resultado.isNotEmpty) {
+      final item = resultado.first;
+      final sils = (item['silabas'] as String).split('*');
+      await _iniciarSesionSiNoExiste(palabras: [(item['label'] ?? '').toString()]);
 
-      debugPrint('📚 SILABAS_ORDEN: ${palabrasDisponibles.length} palabras con sílabas disponibles');
-      palabrasDisponibles.shuffle();
+      // Obtener 3 sílabas de distracción que NO estén en la palabra
+      final silabasExtra = _obtenerSilabasDistraccion(sils, 3);
+
+      setState(() {
+        palabra = item;
+        silabas = sils;
+        huecos = List<String?>.filled(sils.length > 3 ? 3 : sils.length, null);
+
+        // Combinar sílabas correctas con las de distracción
+        silabasDisponibles = [...sils, ...silabasExtra];
+        silabasDisponibles.shuffle();
+      });
     }
+  }
 
-    if (palabrasDisponibles.isEmpty) {
-      debugPrint('❌ SILABAS_ORDEN: No hay palabras con sílabas disponibles');
-      return;
-    }
-
-    // Tomar la primera palabra disponible y removerla
-    final item = palabrasDisponibles.removeAt(0);
-    debugPrint('✅ SILABAS_ORDEN: Cargando palabra: ${item['label']}, silabas="${item['silabas']}"');
-
-    final silabasString = item['silabas']?.toString() ?? '';
-    final sils = silabasString.split('*').where((s) => s.isNotEmpty).toList();
-
-    if (sils.isEmpty) {
-      debugPrint('⚠️ SILABAS_ORDEN: La palabra ${item['label']} no tiene sílabas válidas, saltando...');
-      _cargarPalabra(); // Intentar con la siguiente palabra
-      return;
-    }
-
-    await _iniciarSesionSiNoExiste(palabras: [(item['label'] ?? '').toString()]);
-    setState(() {
-      palabra = item;
-      silabas = sils;
-      huecos = List<String?>.filled(sils.length > 3 ? 3 : sils.length, null);
-      silabasDisponibles = List<String>.from(sils);
-      silabasDisponibles.shuffle();
-    });
+  /// Obtiene [cantidad] sílabas de distracción que NO estén en [silabasCorrectas]
+  List<String> _obtenerSilabasDistraccion(List<String> silabasCorrectas, int cantidad) {
+    final disponibles = silabasDistraccion.where((s) => !silabasCorrectas.contains(s)).toList();
+    disponibles.shuffle();
+    return disponibles.take(cantidad).toList();
   }
 
   // Solo permite colocar la sílaba correcta en el hueco correspondiente y en orden
@@ -161,7 +169,7 @@ class _SilabasOrdenPageState extends State<SilabasOrdenPage> {
             Navigator.pop(context);
           },
         ),
-        title: const Text('Sílabas en orden'),
+        title: const Text('Sílabas en orden (con distracción)'),
         backgroundColor: const Color.fromRGBO(63, 46, 31, 1),
         actions: [
           Padding(
@@ -211,40 +219,28 @@ class _SilabasOrdenPageState extends State<SilabasOrdenPage> {
                   const SizedBox(height: 32),
                   silabasDisponibles.isEmpty
                       ? SizedBox(height: alturaDraggable)
-                      : Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: silabasDisponibles.map((s) => Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 8),
-                            child: Draggable<String>(
-                              data: s,
-                              feedback: Material(
-                                color: Colors.transparent,
-                                child: Card(
-                                  color: Colors.white,
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
-                                    child: Text(
-                                      s,
-                                      style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-                                    ),
+                      : Wrap(
+                          alignment: WrapAlignment.center,
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: silabasDisponibles.map((s) => Draggable<String>(
+                            data: s,
+                            feedback: Material(
+                              color: Colors.transparent,
+                              child: Card(
+                                color: Colors.white,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+                                  child: Text(
+                                    s,
+                                    style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
                                   ),
                                 ),
                               ),
-                              childWhenDragging: Opacity(
-                                opacity: 0.3,
-                                child: Card(
-                                  color: Colors.white,
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                                    child: Text(
-                                      s,
-                                      style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-                                    ),
-                                  ),
-                                ),
-                              ),
+                            ),
+                            childWhenDragging: Opacity(
+                              opacity: 0.3,
                               child: Card(
                                 color: Colors.white,
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -255,10 +251,21 @@ class _SilabasOrdenPageState extends State<SilabasOrdenPage> {
                                     style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
                                   ),
                                 ),
-                          ),
+                              ),
+                            ),
+                            child: Card(
+                              color: Colors.white,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                                child: Text(
+                                  s,
+                                  style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ),
+                          )).toList(),
                         ),
-                      )).toList(),
-                    ),
                 ],
               ),
               ConfettiWidget(
@@ -276,11 +283,11 @@ class _SilabasOrdenPageState extends State<SilabasOrdenPage> {
 
   Future<void> _iniciarSesionSiNoExiste({List<String>? palabras}) async {
     if (_sesionId != null) return;
-    _userId ??= widget.userId ?? await _resolverUserId();
+    _userId ??= await _resolverUserId();
     if (_userId == null) return;
     _sesionId = await DataService.crearSesionActividad(
       userId: _userId!,
-      actividad: 'silabas_orden',
+      actividad: 'silabas_distrac',
       inicio: DateTime.now(),
       palabras: palabras,
     );

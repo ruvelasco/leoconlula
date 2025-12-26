@@ -117,6 +117,14 @@ class DataService {
     }
   }
 
+  static Future<bool> obtenerBloqueoActividades({int? userId}) async {
+    if (useRemoteApi) {
+      return await ApiService.obtenerBloqueoActividades(userId: userId);
+    } else {
+      return await DBHelper.obtenerBloqueoActividades(userId: userId);
+    }
+  }
+
   // ==================== VOCABULARIO ====================
 
   static Future<void> insertarVocabulario(

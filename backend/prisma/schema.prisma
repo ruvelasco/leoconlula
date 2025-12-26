@@ -71,6 +71,7 @@ model Estudiante {
   ayudas_visuales         Boolean   @default(false)
   modo_infantil           Boolean   @default(false)
   numero_repeticiones     Int       @default(5)
+  bloqueo_actividades     Boolean   @default(false)  // Bloquear actividades hasta completar la anterior
   orden_actividades       String?   @default("aprendizaje,discriminacion,discriminacion_inversa,silabas,arrastre,doble,silabas_orden,silabas_distrac")
   actividades_habilitadas String?   @default("aprendizaje,discriminacion,discriminacion_inversa,silabas,arrastre,doble,silabas_orden,silabas_distrac")
 

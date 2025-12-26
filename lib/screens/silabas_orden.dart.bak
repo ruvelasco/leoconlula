@@ -9,9 +9,7 @@ import 'package:leoconlula/widgets/refuerzo.dart';
 import 'package:leoconlula/helpers/db_helper.dart';
 
 class SilabasOrdenPage extends StatefulWidget {
-  final int? userId;
-
-  const SilabasOrdenPage({super.key, this.userId});
+  const SilabasOrdenPage({super.key});
 
   @override
   State<SilabasOrdenPage> createState() => _SilabasOrdenPageState();
@@ -22,7 +20,6 @@ class _SilabasOrdenPageState extends State<SilabasOrdenPage> {
   List<String> silabas = [];
   List<String?> huecos = [];
   List<String> silabasDisponibles = [];
-  List<Map<String, dynamic>> palabrasDisponibles = [];
 
   int aciertos = 0;
   int maxAciertos = 5;
@@ -58,50 +55,24 @@ class _SilabasOrdenPageState extends State<SilabasOrdenPage> {
   }
 
   Future<void> _cargarPalabra() async {
-    _userId ??= widget.userId ?? await _resolverUserId();
+    _userId ??= await _resolverUserId();
     debugPrint('🔍 SILABAS_ORDEN: Cargando vocabulario para usuario $_userId');
 
-    // Si no hay palabras disponibles, cargar todas
-    if (palabrasDisponibles.isEmpty) {
-      final resultado = await DataService.obtenerVocabulario(userId: _userId);
-      debugPrint('📚 SILABAS_ORDEN: ${resultado.length} palabras cargadas desde API/DB');
+    final resultado = await DataService.obtenerVocabulario(userId: _userId);
+    debugPrint('📚 SILABAS_ORDEN: ${resultado.length} palabras cargadas');
 
-      // Filtrar solo palabras que tengan sílabas definidas
-      palabrasDisponibles = resultado.where((item) {
-        final silabas = item['silabas'];
-        return silabas != null && silabas.toString().isNotEmpty;
-      }).toList();
-
-      debugPrint('📚 SILABAS_ORDEN: ${palabrasDisponibles.length} palabras con sílabas disponibles');
-      palabrasDisponibles.shuffle();
+    if (resultado.isNotEmpty) {
+      final item = resultado.first;
+      final sils = (item['silabas'] as String).split('*');
+      await _iniciarSesionSiNoExiste(palabras: [(item['label'] ?? '').toString()]);
+      setState(() {
+        palabra = item;
+        silabas = sils;
+        huecos = List<String?>.filled(sils.length > 3 ? 3 : sils.length, null);
+        silabasDisponibles = List<String>.from(sils);
+        silabasDisponibles.shuffle();
+      });
     }
-
-    if (palabrasDisponibles.isEmpty) {
-      debugPrint('❌ SILABAS_ORDEN: No hay palabras con sílabas disponibles');
-      return;
-    }
-
-    // Tomar la primera palabra disponible y removerla
-    final item = palabrasDisponibles.removeAt(0);
-    debugPrint('✅ SILABAS_ORDEN: Cargando palabra: ${item['label']}, silabas="${item['silabas']}"');
-
-    final silabasString = item['silabas']?.toString() ?? '';
-    final sils = silabasString.split('*').where((s) => s.isNotEmpty).toList();
-
-    if (sils.isEmpty) {
-      debugPrint('⚠️ SILABAS_ORDEN: La palabra ${item['label']} no tiene sílabas válidas, saltando...');
-      _cargarPalabra(); // Intentar con la siguiente palabra
-      return;
-    }
-
-    await _iniciarSesionSiNoExiste(palabras: [(item['label'] ?? '').toString()]);
-    setState(() {
-      palabra = item;
-      silabas = sils;
-      huecos = List<String?>.filled(sils.length > 3 ? 3 : sils.length, null);
-      silabasDisponibles = List<String>.from(sils);
-      silabasDisponibles.shuffle();
-    });
   }
 
   // Solo permite colocar la sílaba correcta en el hueco correspondiente y en orden
@@ -276,7 +247,7 @@ class _SilabasOrdenPageState extends State<SilabasOrdenPage> {
 
   Future<void> _iniciarSesionSiNoExiste({List<String>? palabras}) async {
     if (_sesionId != null) return;
-    _userId ??= widget.userId ?? await _resolverUserId();
+    _userId ??= await _resolverUserId();
     if (_userId == null) return;
     _sesionId = await DataService.crearSesionActividad(
       userId: _userId!,

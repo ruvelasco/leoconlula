@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:leoconlula/services/data_service.dart';
@@ -12,9 +11,7 @@ import 'package:confetti/confetti.dart';
 import 'package:leoconlula/helpers/db_helper.dart';
 
 class DobleArrastrePage extends StatefulWidget {
-  final int? userId;
-
-  const DobleArrastrePage({super.key, this.userId});
+  const DobleArrastrePage({super.key});
 
   @override
   State<DobleArrastrePage> createState() => _DobleArrastrePageState();
@@ -62,7 +59,7 @@ class _DobleArrastrePageState extends State<DobleArrastrePage> {
   }
 
   Future<void> _cargarPalabras() async {
-    _userId ??= widget.userId ?? await _resolverUserId();
+    _userId ??= await _resolverUserId();
     debugPrint('🔍 DOBLE_ARRASTRE: Cargando vocabulario para usuario $_userId');
 
     final resultado = await DataService.obtenerVocabulario(userId: _userId);
@@ -149,19 +146,8 @@ class _DobleArrastrePageState extends State<DobleArrastrePage> {
           return const CircularProgressIndicator();
         },
       );
-    }
-
-    // En web con API remota, no tenemos acceso a archivos locales
-    if (kIsWeb && DataService.useRemoteApi) {
-      return Icon(
-        Icons.image_not_supported,
-        size: width,
-        color: Colors.grey,
-      );
-    }
-
-    // Para modo local, usar FutureBuilder para acceder al directorio
-    if (!kIsWeb) {
+    } else {
+      // Para modo local, usar FutureBuilder solo para esta imagen
       return FutureBuilder<Directory>(
         future: getApplicationDocumentsDirectory(),
         builder: (context, snapshot) {
@@ -176,9 +162,6 @@ class _DobleArrastrePageState extends State<DobleArrastrePage> {
         },
       );
     }
-
-    // Fallback
-    return Icon(Icons.image, size: width, color: Colors.grey);
   }
 
   @override
@@ -316,7 +299,7 @@ class _DobleArrastrePageState extends State<DobleArrastrePage> {
 
   Future<void> _iniciarSesionSiNoExiste({List<String>? palabras}) async {
     if (_sesionId != null) return;
-    _userId ??= widget.userId ?? await _resolverUserId();
+    _userId ??= await _resolverUserId();
     if (_userId == null) return;
     _sesionId = await DataService.crearSesionActividad(
       userId: _userId!,

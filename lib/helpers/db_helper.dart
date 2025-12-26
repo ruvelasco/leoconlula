@@ -308,6 +308,28 @@ class DBHelper {
     return 5;
   }
 
+  static Future<bool> obtenerBloqueoActividades({int? userId}) async {
+    final db = await database;
+    Map<String, dynamic>? usuario;
+    if (userId != null) {
+      final res = await db.query(
+        'usuarios',
+        where: 'id = ?',
+        whereArgs: [userId],
+        limit: 1,
+      );
+      if (res.isNotEmpty) usuario = res.first;
+    }
+    if (usuario == null) {
+      final res = await db.query('usuarios', limit: 1);
+      if (res.isNotEmpty) usuario = res.first;
+    }
+    if (usuario != null && usuario['bloqueo_actividades'] != null) {
+      return usuario['bloqueo_actividades'] == 1 || usuario['bloqueo_actividades'] == true;
+    }
+    return false; // Por defecto deshabilitado
+  }
+
   /// Borra todas las sesiones de actividades de la base de datos
   static Future<void> borrarTodasLasSesiones() async {
     final db = await database;

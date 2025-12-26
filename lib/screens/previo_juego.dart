@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:leoconlula/services/data_service.dart';
 import 'package:flutter/material.dart';
@@ -37,6 +38,7 @@ class _PrevioJuegoPageState extends State<PrevioJuegoPage> {
   bool bloqueAnteriorCompletado = true;
   List<String> ordenActividades = [];
   List<String> actividadesHabilitadas = [];
+  bool bloqueoActividades = false; // Opción para habilitar/deshabilitar bloqueo
 
   @override
   void initState() {
@@ -114,22 +116,33 @@ class _PrevioJuegoPageState extends State<PrevioJuegoPage> {
     final orden = await DataService.obtenerOrdenActividades(widget.userId);
     final habilitadas =
         await DataService.obtenerActividadesHabilitadas(widget.userId);
+    final bloqueo = await DataService.obtenerBloqueoActividades(userId: widget.userId);
     print('🔧 Orden cargado: $orden');
     print('🔧 Habilitadas cargadas: $habilitadas');
+    print('🔒 Bloqueo de actividades: $bloqueo');
     setState(() {
       ordenActividades = orden;
       actividadesHabilitadas = habilitadas;
+      bloqueoActividades = bloqueo;
     });
     _cargarProgresoActividades();
   }
 
   Future<void> _cargarProgresoActividades() async {
-    // En modo remoto, deshabilitamos temporalmente el seguimiento de progreso
-    // TODO: Implementar obtención de sesiones desde API
+    // En modo remoto, si el bloqueo está desactivado, permitir acceso a todo
     if (DataService.useRemoteApi) {
+      if (!bloqueoActividades) {
+        setState(() {
+          actividadesCompletadas = {}; // Sin restricciones
+          bloqueAnteriorCompletado = true;
+        });
+        return;
+      }
+      // TODO: Implementar obtención de sesiones desde API cuando bloqueo esté activado
+      // Por ahora, con bloqueo activado en modo remoto, solo primera actividad disponible
       setState(() {
-        actividadesCompletadas = {};
-        bloqueAnteriorCompletado = true; // Permitir acceso a todas las actividades
+        actividadesCompletadas = {}; // Ninguna completada aún (podemos agregar endpoint más tarde)
+        bloqueAnteriorCompletado = true;
       });
       return;
     }
@@ -584,12 +597,16 @@ class _PrevioJuegoPageState extends State<PrevioJuegoPage> {
           ? true
           : (actividadesCompletadas[actividadesAMostrar[i - 1]] ?? false);
 
-      // TODAS LAS ACTIVIDADES ABIERTAS (sin restricciones)
-      final estaHabilitado = true;
+      // Determinar si la actividad está habilitada basado en la configuración
+      final estaHabilitado = !bloqueoActividades || // Si el bloqueo está deshabilitado, todas están abiertas
+          !esTarjetaActual || // Si no es la tarjeta actual, no aplicar restricciones
+          i == 0 || // Primera actividad siempre está disponible
+          previaCompletada; // O si la anterior está completada
 
       print('🔍 Actividad $i: $clave');
       print('   - Es tarjeta actual: $esTarjetaActual');
       print('   - Bloque anterior completo: $bloqueAnteriorCompletado');
+      print('   - Bloqueo activado: $bloqueoActividades');
       print(
           '   - Previa completada (${i > 0 ? actividadesAMostrar[i - 1] : 'primera'}): $previaCompletada');
       print('   - HABILITADO: $estaHabilitado');
@@ -715,37 +732,48 @@ class _PrevioJuegoPageState extends State<PrevioJuegoPage> {
         },
       );
     } else {
-      // Si es modo local, necesitamos usar FutureBuilder para obtener la ruta
-      debugPrint('🖼️ Modo local - usando FutureBuilder para obtener ruta');
-      return FutureBuilder<Directory>(
-        future: getApplicationDocumentsDirectory(),
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            debugPrint('❌ Error obteniendo directorio: ${snapshot.error}');
-            return const Icon(Icons.error, size: 50, color: Colors.orange);
-          }
-          if (!snapshot.hasData) {
-            return const Center(
-              child: SizedBox(
-                width: 30,
-                height: 30,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
+      // En web con API remota, no tenemos acceso a archivos locales
+      if (kIsWeb && DataService.useRemoteApi) {
+        debugPrint('⚠️ Web + API remota: no se puede cargar imagen local');
+        return const Icon(Icons.image_not_supported, size: 50, color: Colors.grey);
+      }
+
+      // Si es modo local no-web, necesitamos usar FutureBuilder para obtener la ruta
+      if (!kIsWeb) {
+        debugPrint('🖼️ Modo local - usando FutureBuilder para obtener ruta');
+        return FutureBuilder<Directory>(
+          future: getApplicationDocumentsDirectory(),
+          builder: (context, snapshot) {
+            if (snapshot.hasError) {
+              debugPrint('❌ Error obteniendo directorio: ${snapshot.error}');
+              return const Icon(Icons.error, size: 50, color: Colors.orange);
+            }
+            if (!snapshot.hasData) {
+              return const Center(
+                child: SizedBox(
+                  width: 30,
+                  height: 30,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              );
+            }
+            final filePath = '${snapshot.data!.path}/vocabulario/$nombreImagen';
+            debugPrint('🖼️ Cargando imagen local desde: $filePath');
+            return Image.file(
+              File(filePath),
+              fit: BoxFit.contain,
+              errorBuilder: (context, error, stackTrace) {
+                debugPrint('❌ Error cargando archivo $filePath: $error');
+                return const Icon(Icons.broken_image,
+                    size: 50, color: Colors.red);
+              },
             );
-          }
-          final filePath = '${snapshot.data!.path}/vocabulario/$nombreImagen';
-          debugPrint('🖼️ Cargando imagen local desde: $filePath');
-          return Image.file(
-            File(filePath),
-            fit: BoxFit.contain,
-            errorBuilder: (context, error, stackTrace) {
-              debugPrint('❌ Error cargando archivo $filePath: $error');
-              return const Icon(Icons.broken_image,
-                  size: 50, color: Colors.red);
-            },
-          );
-        },
-      );
+          },
+        );
+      }
+
+      // Fallback
+      return const Icon(Icons.image, size: 50, color: Colors.grey);
     }
   }
 }

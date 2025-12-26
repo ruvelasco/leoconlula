@@ -31,6 +31,7 @@ class _ConfiguracionUsuarioPageState extends State<ConfiguracionUsuarioPage> {
     'ayudas_visuales': false,
     'modo_infantil': false,
     'tipo': true, // <--- Añade este campo
+    'bloqueo_actividades': false, // Bloquear actividades hasta completar la anterior
   };
 
   // Actividades disponibles y su orden
@@ -92,6 +93,7 @@ class _ConfiguracionUsuarioPageState extends State<ConfiguracionUsuarioPage> {
           'ayudas_visuales': (usuario['ayudas_visuales'] ?? 0) == 1,
           'modo_infantil': (usuario['modo_infantil'] ?? 0) == 1,
           'tipo': (usuario['tipo'] ?? 1) == 1,
+          'bloqueo_actividades': (usuario['bloqueo_actividades'] ?? 0) == 1,
         };
         ordenActividades = orden;
         // Actualizar mapa de habilitadas
@@ -545,6 +547,12 @@ class _ConfiguracionUsuarioPageState extends State<ConfiguracionUsuarioPage> {
                             title: 'FUENTE EN MAYÚSCULAS',
                             value: config['tipo'] ?? true,
                             onTap: () => _toggleConfig('tipo'),
+                          ),
+                          _ConfigButton(
+                            icon: Icons.lock,
+                            title: 'BLOQUEAR ACTIVIDADES',
+                            value: config['bloqueo_actividades'] ?? false,
+                            onTap: () => _toggleConfig('bloqueo_actividades'),
                           ),
                           _ConfigButton(
                             icon: Icons.volume_up,

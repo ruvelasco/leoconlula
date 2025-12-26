@@ -22,6 +22,7 @@ class _SilabasOrdenDistraccionPageState extends State<SilabasOrdenDistraccionPag
   List<String> silabas = [];
   List<String?> huecos = [];
   List<String> silabasDisponibles = [];
+  List<Map<String, dynamic>> palabrasDisponibles = [];
 
   int aciertos = 0;
   int maxAciertos = 5;
@@ -82,27 +83,53 @@ class _SilabasOrdenDistraccionPageState extends State<SilabasOrdenDistraccionPag
     _userId ??= widget.userId ?? await _resolverUserId();
     debugPrint('🔍 SILABAS_ORDEN_DISTRACCION: Cargando vocabulario para usuario $_userId');
 
-    final resultado = await DataService.obtenerVocabulario(userId: _userId);
-    debugPrint('📚 SILABAS_ORDEN_DISTRACCION: ${resultado.length} palabras cargadas');
+    // Si no hay palabras disponibles, cargar todas
+    if (palabrasDisponibles.isEmpty) {
+      final resultado = await DataService.obtenerVocabulario(userId: _userId);
+      debugPrint('📚 SILABAS_ORDEN_DISTRACCION: ${resultado.length} palabras cargadas desde API/DB');
 
-    if (resultado.isNotEmpty) {
-      final item = resultado.first;
-      final sils = (item['silabas'] as String).split('*');
-      await _iniciarSesionSiNoExiste(palabras: [(item['label'] ?? '').toString()]);
+      // Filtrar solo palabras que tengan sílabas definidas
+      palabrasDisponibles = resultado.where((item) {
+        final silabas = item['silabas'];
+        return silabas != null && silabas.toString().isNotEmpty;
+      }).toList();
 
-      // Obtener 3 sílabas de distracción que NO estén en la palabra
-      final silabasExtra = _obtenerSilabasDistraccion(sils, 3);
-
-      setState(() {
-        palabra = item;
-        silabas = sils;
-        huecos = List<String?>.filled(sils.length > 3 ? 3 : sils.length, null);
-
-        // Combinar sílabas correctas con las de distracción
-        silabasDisponibles = [...sils, ...silabasExtra];
-        silabasDisponibles.shuffle();
-      });
+      debugPrint('📚 SILABAS_ORDEN_DISTRACCION: ${palabrasDisponibles.length} palabras con sílabas disponibles');
+      palabrasDisponibles.shuffle();
     }
+
+    if (palabrasDisponibles.isEmpty) {
+      debugPrint('❌ SILABAS_ORDEN_DISTRACCION: No hay palabras con sílabas disponibles');
+      return;
+    }
+
+    // Tomar la primera palabra disponible y removerla
+    final item = palabrasDisponibles.removeAt(0);
+    debugPrint('✅ SILABAS_ORDEN_DISTRACCION: Cargando palabra: ${item['label']}, silabas="${item['silabas']}"');
+
+    final silabasString = item['silabas']?.toString() ?? '';
+    final sils = silabasString.split('*').where((s) => s.isNotEmpty).toList();
+
+    if (sils.isEmpty) {
+      debugPrint('⚠️ SILABAS_ORDEN_DISTRACCION: La palabra ${item['label']} no tiene sílabas válidas, saltando...');
+      _cargarPalabra(); // Intentar con la siguiente palabra
+      return;
+    }
+
+    await _iniciarSesionSiNoExiste(palabras: [(item['label'] ?? '').toString()]);
+
+    // Obtener 3 sílabas de distracción que NO estén en la palabra
+    final silabasExtra = _obtenerSilabasDistraccion(sils, 3);
+
+    setState(() {
+      palabra = item;
+      silabas = sils;
+      huecos = List<String?>.filled(sils.length > 3 ? 3 : sils.length, null);
+
+      // Combinar sílabas correctas con las de distracción
+      silabasDisponibles = [...sils, ...silabasExtra];
+      silabasDisponibles.shuffle();
+    });
   }
 
   /// Obtiene [cantidad] sílabas de distracción que NO estén en [silabasCorrectas]

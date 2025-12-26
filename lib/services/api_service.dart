@@ -639,6 +639,35 @@ class ApiService {
     }
   }
 
+  /// Obtener si el bloqueo de actividades está activado
+  static Future<bool> obtenerBloqueoActividades({int? userId}) async {
+    try {
+      final usuarios = await obtenerUsuarios();
+      Map<String, dynamic>? usuario;
+
+      if (userId != null) {
+        usuario = usuarios.firstWhere(
+          (u) => u['id'] == userId,
+          orElse: () => {},
+        );
+      }
+
+      if (usuario == null || usuario.isEmpty) {
+        if (usuarios.isNotEmpty) {
+          usuario = usuarios.first;
+        }
+      }
+
+      if (usuario != null && usuario['bloqueo_actividades'] != null) {
+        return usuario['bloqueo_actividades'] == true || usuario['bloqueo_actividades'] == 1;
+      }
+      return false; // Por defecto deshabilitado
+    } catch (e) {
+      debugPrint('Error en obtenerBloqueoActividades: $e');
+      return false;
+    }
+  }
+
   // ==================== UPLOAD DE ARCHIVOS ====================
 
   /// Subir una imagen (avatar o vocabulario)
