@@ -573,6 +573,124 @@ app.delete('/vocabulario/:id', authenticate, async (req, res) => {
   }
 });
 
+// Legacy: GET /usuarios/:id/orden-actividades
+app.get('/usuarios/:id/orden-actividades', authenticate, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+
+    const estudiante = await prisma.estudiante.findUnique({
+      where: { id },
+      select: { orden_actividades: true },
+    });
+
+    const orden = estudiante?.orden_actividades?.split(',') || [
+      'aprendizaje',
+      'discriminacion',
+      'discriminacion_inversa',
+      'silabas',
+      'arrastre',
+      'doble',
+      'silabas_orden',
+      'silabas_distrac',
+    ];
+
+    res.json(orden);
+  } catch (err) {
+    res.status(400).json({ error: (err as Error).message });
+  }
+});
+
+// Legacy: PATCH /usuarios/:id/orden-actividades
+app.patch('/usuarios/:id/orden-actividades', authenticate, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const { orden } = req.body;
+
+    const estudiante = await prisma.estudiante.update({
+      where: { id },
+      data: { orden_actividades: orden.join(',') },
+    });
+
+    res.json(estudiante);
+  } catch (err) {
+    res.status(400).json({ error: (err as Error).message });
+  }
+});
+
+// Legacy: GET /usuarios/:id/actividades-habilitadas
+app.get('/usuarios/:id/actividades-habilitadas', authenticate, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+
+    const estudiante = await prisma.estudiante.findUnique({
+      where: { id },
+      select: { actividades_habilitadas: true },
+    });
+
+    const habilitadas = estudiante?.actividades_habilitadas?.split(',') || [
+      'aprendizaje',
+      'discriminacion',
+      'discriminacion_inversa',
+      'silabas',
+      'arrastre',
+      'doble',
+      'silabas_orden',
+      'silabas_distrac',
+    ];
+
+    res.json(habilitadas);
+  } catch (err) {
+    res.status(400).json({ error: (err as Error).message });
+  }
+});
+
+// Legacy: PATCH /usuarios/:id/actividades-habilitadas
+app.patch('/usuarios/:id/actividades-habilitadas', authenticate, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const { actividades } = req.body;
+
+    const estudiante = await prisma.estudiante.update({
+      where: { id },
+      data: { actividades_habilitadas: actividades.join(',') },
+    });
+
+    res.json(estudiante);
+  } catch (err) {
+    res.status(400).json({ error: (err as Error).message });
+  }
+});
+
+// Legacy: PATCH /usuarios/:id/campos (for updating individual fields)
+app.patch('/usuarios/:id/campos', authenticate, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+
+    // Verify student is assigned to current user
+    const asignacion = await prisma.estudianteAsignacion.findFirst({
+      where: {
+        authUserId: req.user!.userId,
+        estudianteId: id,
+      },
+    });
+
+    if (!asignacion) {
+      res.status(403).json({ error: 'Acceso denegado a este estudiante' });
+      return;
+    }
+
+    // Update the student with the provided fields
+    const estudiante = await prisma.estudiante.update({
+      where: { id },
+      data: req.body,
+    });
+
+    res.json(estudiante);
+  } catch (err) {
+    res.status(400).json({ error: (err as Error).message });
+  }
+});
+
 // ==================== COMPARTIR ESTUDIANTES ====================
 
 // Join a student using their unique code
