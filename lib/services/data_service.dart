@@ -38,6 +38,15 @@ class DataService {
     }
   }
 
+  static Future<Map<String, dynamic>> unirseAEstudiante(String codigo) async {
+    if (useRemoteApi) {
+      return await ApiService.unirseAEstudiante(codigo);
+    } else {
+      // En modo local, no hay sistema de códigos compartidos
+      throw Exception('La funcionalidad de compartir estudiantes solo está disponible en modo remoto');
+    }
+  }
+
   static Future<void> actualizarCampoUsuarioBool(
       int userId, String campo, bool valor) async {
     if (useRemoteApi) {

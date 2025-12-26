@@ -36,13 +36,45 @@ class _PrincipalPageState extends State<PrincipalPage> {
   }
 
   void _showAddUserModal() {
-    final nameController = TextEditingController();
-
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Añadir Usuario'),
+          title: const Text('Estudiante'),
+          content: const Text('¿Qué deseas hacer?'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _showCreateStudentDialog();
+              },
+              child: const Text('Crear nuevo'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _showJoinStudentDialog();
+              },
+              child: const Text('Unirme con código'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancelar'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showCreateStudentDialog() {
+    final nameController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Crear Estudiante'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -54,23 +86,100 @@ class _PrincipalPageState extends State<PrincipalPage> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => Navigator.pop(dialogContext),
               child: const Text('Cancelar'),
             ),
             TextButton(
-              onPressed: () {
+              onPressed: () async {
                 final name = nameController.text;
                 if (name.isNotEmpty) {
-                  _addUser(name, "lula.png");
-                  Navigator.pop(context);
+                  await _addUser(name, "lula.png");
+                  if (dialogContext.mounted) {
+                    Navigator.pop(dialogContext);
+                  }
                 }
               },
-              child: const Text('Añadir'),
+              child: const Text('Crear'),
             ),
           ],
         );
       },
     );
+  }
+
+  void _showJoinStudentDialog() {
+    final codeController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Unirse a Estudiante'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Introduce el código del estudiante:',
+                style: TextStyle(fontSize: 14),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: codeController,
+                decoration: const InputDecoration(
+                  labelText: 'Código (ej: LEO-ABC123)',
+                  hintText: 'LEO-XXXXXX',
+                ),
+                textCapitalization: TextCapitalization.characters,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () async {
+                final code = codeController.text.trim();
+                if (code.isNotEmpty) {
+                  await _joinStudent(code);
+                  if (dialogContext.mounted) {
+                    Navigator.pop(dialogContext);
+                  }
+                }
+              },
+              child: const Text('Unirse'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _joinStudent(String code) async {
+    try {
+      final result = await DataService.unirseAEstudiante(code);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['message'] ?? 'Te has unido exitosamente'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+
+      _loadUsers();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceAll('Exception: ', '')),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _handleLogout() async {
