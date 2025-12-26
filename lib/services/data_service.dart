@@ -276,17 +276,17 @@ class DataService {
   static Future<ImageProvider?> obtenerImageProvider(String nombreImagen, {String? localPath}) async {
     if (nombreImagen.isEmpty) return null;
 
-    // Si es una URL, usar NetworkImage
+    // Si es una URL completa, usar NetworkImage
     if (nombreImagen.startsWith('http://') || nombreImagen.startsWith('https://')) {
       debugPrint('🖼️ DataService: Usando NetworkImage para: $nombreImagen');
       return NetworkImage(nombreImagen);
     }
 
-    // Si es archivo local, necesitamos el path
+    // En modo remoto, construir URL hacia el backend
     if (useRemoteApi) {
-      // En modo remoto pero nombreImagen no es URL, algo está mal
-      debugPrint('⚠️ DataService: Modo remoto pero nombreImagen no es URL: $nombreImagen');
-      return null;
+      final imageUrl = '${ApiService.baseUrl}/uploads/vocabulario/$nombreImagen';
+      debugPrint('🖼️ DataService: Construyendo URL remota: $imageUrl');
+      return NetworkImage(imageUrl);
     }
 
     // Modo local - usar FileImage

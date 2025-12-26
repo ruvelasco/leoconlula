@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:leoconlula/services/data_service.dart';
+import 'package:leoconlula/services/api_service.dart';
 
 class AvatarUsuario extends StatelessWidget {
   final int? userId; // Si quieres filtrar por usuario concreto, si no, déjalo null
@@ -10,11 +11,6 @@ class AvatarUsuario extends StatelessWidget {
   const AvatarUsuario({super.key, this.userId});
 
   Future<String?> _getFotoPath() async {
-    // En web con API remota, no intentar acceder a archivos locales
-    if (kIsWeb && DataService.useRemoteApi) {
-      return null; // Usar imagen por defecto
-    }
-
     try {
       final usuarios = await DataService.obtenerUsuarios();
       Map<String, dynamic>? usuario;
@@ -31,12 +27,19 @@ class AvatarUsuario extends StatelessWidget {
       if (usuario != null && usuario['foto'] != null) {
         final foto = usuario['foto'] as String;
 
-        // Si es una URL, retornarla directamente
+        // Si es una URL completa, retornarla directamente
         if (foto.startsWith('http://') || foto.startsWith('https://')) {
           return foto;
         }
 
-        // Solo intentar acceder a archivos locales en modo no-web
+        // En modo remoto web, construir URL hacia el backend
+        if (kIsWeb && DataService.useRemoteApi) {
+          final imageUrl = '${ApiService.baseUrl}/uploads/avatars/$foto';
+          debugPrint('🖼️ Avatar desde: $imageUrl');
+          return imageUrl;
+        }
+
+        // En modo local, usar archivo local
         if (!kIsWeb) {
           final dir = await getApplicationDocumentsDirectory();
           final fotoPath = '${dir.path}/$foto';

@@ -1,6 +1,9 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:leoconlula/services/data_service.dart';
+import 'package:leoconlula/services/api_service.dart';
 
 typedef OnAcceptSilaba = void Function(int index, String silaba);
 
@@ -21,6 +24,37 @@ class TargetSilabas extends StatelessWidget {
     this.huecoBuilder,
   });
 
+  Future<ImageProvider?> _getImageProvider() async {
+    if (imageAsset == null || imageAsset!.isEmpty) return null;
+
+    // Si es una URL completa, usar NetworkImage
+    if (imageAsset!.startsWith('http://') || imageAsset!.startsWith('https://')) {
+      return NetworkImage(imageAsset!);
+    }
+
+    // En modo remoto web, construir URL hacia el backend
+    if (kIsWeb && DataService.useRemoteApi) {
+      final imageUrl = '${ApiService.baseUrl}/uploads/vocabulario/$imageAsset';
+      debugPrint('🖼️ Cargando imagen desde: $imageUrl');
+      return NetworkImage(imageUrl);
+    }
+
+    // En modo local, usar FileImage
+    if (!kIsWeb) {
+      try {
+        final dir = await getApplicationDocumentsDirectory();
+        final file = File('${dir.path}/vocabulario/$imageAsset');
+        if (await file.exists()) {
+          return FileImage(file);
+        }
+      } catch (e) {
+        debugPrint('Error loading image: $e');
+      }
+    }
+
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     // Tamaño igual que TargetCard
@@ -29,11 +63,9 @@ class TargetSilabas extends StatelessWidget {
     const double innerSize = 210;
     const double rectHeight = 60;
 
-    return FutureBuilder<Directory>(
-      future: getApplicationDocumentsDirectory(),
+    return FutureBuilder<ImageProvider?>(
+      future: _getImageProvider(),
       builder: (context, snapshot) {
-        if (!snapshot.hasData) return const SizedBox();
-        final docPath = snapshot.data!.path;
         return Center(
           child: Container(
             width: outerWidth,
@@ -63,12 +95,25 @@ class TargetSilabas extends StatelessWidget {
                   ),
                   child: Padding(
                     padding: const EdgeInsets.only(bottom: 16),
-                    child: Image.file(
-                      File('$docPath/vocabulario/$imageAsset'),
-                      width: 120,
-                      height: 120,
-                      fit: BoxFit.contain,
-                    ),
+                    child: snapshot.data != null
+                        ? Image(
+                            image: snapshot.data!,
+                            width: 120,
+                            height: 120,
+                            fit: BoxFit.contain,
+                            errorBuilder: (context, error, stackTrace) {
+                              return const Icon(
+                                Icons.image_not_supported,
+                                size: 120,
+                                color: Colors.grey,
+                              );
+                            },
+                          )
+                        : const Icon(
+                            Icons.image,
+                            size: 120,
+                            color: Colors.grey,
+                          ),
                   ),
                 ),
                 // Primer rectángulo blanco con el label
