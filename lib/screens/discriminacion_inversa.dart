@@ -296,6 +296,9 @@ class _DiscriminacionInversaState extends State<DiscriminacionInversa> {
   }
 
   Future<int?> _resolverUserId() async {
+    // En modo remoto, requiere userId como parámetro
+    if (DataService.useRemoteApi) return null;
+
     final db = await DBHelper.database;
     final res = await db.query('usuarios', limit: 1);
     if (res.isNotEmpty) return res.first['id'] as int;

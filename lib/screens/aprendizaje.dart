@@ -142,6 +142,9 @@ class _AprendizajePageState extends State<AprendizajePage> with SingleTickerProv
       _userId = widget.userId;
       return _userId;
     }
+    // En modo remoto, requiere userId como parámetro
+    if (DataService.useRemoteApi) return null;
+
     final db = await DBHelper.database;
     final res = await db.query('usuarios', limit: 1);
     if (res.isNotEmpty) _userId = res.first['id'] as int;
@@ -169,16 +172,12 @@ class _AprendizajePageState extends State<AprendizajePage> with SingleTickerProv
   }
 
   Future<List<String>> _obtenerPalabrasSesion(int uid) async {
-    final db = await DBHelper.database;
-    final res = await db.query(
-      'vocabulario',
-      columns: ['label'],
-      where: 'idUsuario = ?',
-      whereArgs: [uid],
-      orderBy: 'id ASC',
-      limit: 3,
-    );
-    return res.map((e) => (e['label'] ?? '').toString()).where((e) => e.isNotEmpty).toList();
+    final vocabulario = await DataService.obtenerVocabulario(userId: uid);
+    return vocabulario
+        .take(3)
+        .map((e) => (e['label'] ?? '').toString())
+        .where((e) => e.isNotEmpty)
+        .toList();
   }
 
   Future<void> _cerrarSesion({String? resultado}) async {
