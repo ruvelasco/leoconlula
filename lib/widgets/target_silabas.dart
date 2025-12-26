@@ -64,6 +64,7 @@ class TargetSilabas extends StatelessWidget {
     const double rectHeight = 60;
 
     return FutureBuilder<ImageProvider?>(
+      key: ValueKey('${imageAsset}_$palabra'), // Forzar reconstrucción cuando cambian imagen o palabra
       future: _getImageProvider(),
       builder: (context, snapshot) {
         return Center(
