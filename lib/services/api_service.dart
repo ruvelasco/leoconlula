@@ -142,18 +142,15 @@ class ApiService {
 
   // ==================== COMPARTIR ESTUDIANTES ====================
 
-  /// Compartir un estudiante con otro usuario por email
-  static Future<Map<String, dynamic>> compartirEstudiante(int estudianteId, String email, {String role = 'TUTOR'}) async {
+  /// Unirse a un estudiante usando su código único
+  static Future<Map<String, dynamic>> unirseAEstudiante(String codigo) async {
     try {
-      debugPrint('📤 Compartiendo estudiante $estudianteId con $email');
+      debugPrint('📤 Uniéndose a estudiante con código: $codigo');
       final headers = await _getHeaders();
       final response = await http.post(
-        Uri.parse('$baseUrl/api/estudiantes/$estudianteId/compartir'),
+        Uri.parse('$baseUrl/api/estudiantes/unirse'),
         headers: headers,
-        body: jsonEncode({
-          'email': email,
-          'role': role,
-        }),
+        body: jsonEncode({'codigo': codigo}),
       );
 
       debugPrint('📥 Status: ${response.statusCode}');
@@ -161,14 +158,14 @@ class ApiService {
 
       if (response.statusCode == 201) {
         final result = jsonDecode(response.body);
-        debugPrint('✅ Estudiante compartido exitosamente');
+        debugPrint('✅ Unido exitosamente al estudiante');
         return result;
       } else {
         final error = jsonDecode(response.body);
-        throw Exception(error['error'] ?? 'Error al compartir estudiante');
+        throw Exception(error['error'] ?? 'Error al unirse al estudiante');
       }
     } catch (e) {
-      debugPrint('❌ Error en compartirEstudiante: $e');
+      debugPrint('❌ Error en unirseAEstudiante: $e');
       rethrow;
     }
   }
