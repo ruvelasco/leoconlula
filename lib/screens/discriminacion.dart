@@ -209,6 +209,9 @@ class _DemoDragTargetState extends State<DemoDragTarget> {
   }
 
   Future<void> _incrementarAcierto(String label) async {
+    // En modo remoto, las estadísticas se manejan a través de sesiones
+    if (DataService.useRemoteApi) return;
+
     final db = await DBHelper.database;
     await db.rawUpdate(
       'UPDATE vocabulario SET acierto = acierto + 1 WHERE label = ?',
@@ -217,6 +220,9 @@ class _DemoDragTargetState extends State<DemoDragTarget> {
   }
 
   Future<void> _incrementarError(String label) async {
+    // En modo remoto, las estadísticas se manejan a través de sesiones
+    if (DataService.useRemoteApi) return;
+
     final db = await DBHelper.database;
     await db.rawUpdate(
       'UPDATE vocabulario SET errores = errores + 1 WHERE label = ?',
@@ -350,6 +356,12 @@ class _DemoDragTargetState extends State<DemoDragTarget> {
   }
 
   Future<int?> _resolverUserId() async {
+    // En modo remoto, se requiere que userId se pase como parámetro
+    if (DataService.useRemoteApi) {
+      debugPrint('⚠️ DISCRIMINACION: En modo remoto se requiere userId como parámetro');
+      return null;
+    }
+
     final db = await DBHelper.database;
     final res = await db.query('usuarios', limit: 1);
     if (res.isNotEmpty) return res.first['id'] as int;
