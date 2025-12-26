@@ -527,32 +527,32 @@ class _PrevioJuegoPageState extends State<PrevioJuegoPage> {
       'discriminacion_inversa': (
         titulo: 'DISC. INVERSA',
         icono: Icons.swap_horiz,
-        builder: () => DiscriminacionInversa(key: UniqueKey()),
+        builder: () => DiscriminacionInversa(key: UniqueKey(), userId: widget.userId),
       ),
       'silabas': (
         titulo: 'SÍLABAS',
         icono: Icons.text_fields,
-        builder: () => SilabasPage(key: UniqueKey()),
+        builder: () => SilabasPage(key: UniqueKey(), userId: widget.userId),
       ),
       'arrastre': (
         titulo: 'ARRASTRE',
         icono: Icons.touch_app,
-        builder: () => ImagenArrastrePage(key: UniqueKey()),
+        builder: () => ImagenArrastrePage(key: UniqueKey(), userId: widget.userId),
       ),
       'doble': (
         titulo: 'DOBLE',
         icono: Icons.format_list_bulleted,
-        builder: () => doble_arrastre.DobleArrastrePage(key: UniqueKey()),
+        builder: () => doble_arrastre.DobleArrastrePage(key: UniqueKey(), userId: widget.userId),
       ),
       'silabas_orden': (
         titulo: 'S. ORDEN',
         icono: Icons.sort,
-        builder: () => SilabasOrdenPage(key: UniqueKey()),
+        builder: () => SilabasOrdenPage(key: UniqueKey(), userId: widget.userId),
       ),
       'silabas_distrac': (
         titulo: 'S. DISTRAC.',
         icono: Icons.psychology,
-        builder: () => SilabasOrdenDistraccionPage(key: UniqueKey()),
+        builder: () => SilabasOrdenDistraccionPage(key: UniqueKey(), userId: widget.userId),
       ),
     };
 

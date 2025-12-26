@@ -9,7 +9,9 @@ import 'package:leoconlula/widgets/refuerzo.dart';
 import 'package:leoconlula/helpers/db_helper.dart';
 
 class SilabasOrdenPage extends StatefulWidget {
-  const SilabasOrdenPage({super.key});
+  final int? userId;
+
+  const SilabasOrdenPage({super.key, this.userId});
 
   @override
   State<SilabasOrdenPage> createState() => _SilabasOrdenPageState();
@@ -55,7 +57,7 @@ class _SilabasOrdenPageState extends State<SilabasOrdenPage> {
   }
 
   Future<void> _cargarPalabra() async {
-    _userId ??= await _resolverUserId();
+    _userId ??= widget.userId ?? await _resolverUserId();
     debugPrint('🔍 SILABAS_ORDEN: Cargando vocabulario para usuario $_userId');
 
     final resultado = await DataService.obtenerVocabulario(userId: _userId);
@@ -247,7 +249,7 @@ class _SilabasOrdenPageState extends State<SilabasOrdenPage> {
 
   Future<void> _iniciarSesionSiNoExiste({List<String>? palabras}) async {
     if (_sesionId != null) return;
-    _userId ??= await _resolverUserId();
+    _userId ??= widget.userId ?? await _resolverUserId();
     if (_userId == null) return;
     _sesionId = await DataService.crearSesionActividad(
       userId: _userId!,

@@ -10,7 +10,9 @@ import 'package:leoconlula/widgets/refuerzo.dart';
 import 'package:leoconlula/helpers/db_helper.dart';
 
 class SilabasPage extends StatefulWidget {
-  const SilabasPage({super.key});
+  final int? userId;
+
+  const SilabasPage({super.key, this.userId});
 
   @override
   State<SilabasPage> createState() => _SilabasPageState();
@@ -56,7 +58,7 @@ class _SilabasPageState extends State<SilabasPage> {
   }
 
   Future<void> _cargarPalabra() async {
-    _userId ??= await _resolverUserId();
+    _userId ??= widget.userId ?? await _resolverUserId();
     debugPrint('🔍 SILABAS: Cargando vocabulario para usuario $_userId');
 
     final resultado = await DataService.obtenerVocabulario(userId: _userId);

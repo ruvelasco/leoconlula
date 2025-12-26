@@ -13,7 +13,9 @@ import 'package:leoconlula/widgets/refuerzo.dart';
 import 'package:leoconlula/helpers/db_helper.dart';
 
 class DiscriminacionInversa extends StatefulWidget {
-  const DiscriminacionInversa({super.key});
+  final int? userId;
+
+  const DiscriminacionInversa({super.key, this.userId});
 
   @override
   State<DiscriminacionInversa> createState() => _DiscriminacionInversaState();
@@ -69,7 +71,7 @@ class _DiscriminacionInversaState extends State<DiscriminacionInversa> {
   }
 
   Future<void> _cargarPalabras() async {
-    _userId ??= await _resolverUserId();
+    _userId ??= widget.userId ?? await _resolverUserId();
     debugPrint('🔍 DISCRIMINACION_INVERSA: Cargando vocabulario para usuario $_userId');
 
     final vocabularioRaw = await DataService.obtenerVocabulario(userId: _userId);
@@ -285,7 +287,7 @@ class _DiscriminacionInversaState extends State<DiscriminacionInversa> {
 
   Future<void> _iniciarSesionSiNoExiste({List<String>? palabras}) async {
     if (_sesionId != null) return;
-    _userId ??= await _resolverUserId();
+    _userId ??= widget.userId ?? await _resolverUserId();
     if (_userId == null) return;
     _sesionId = await DataService.crearSesionActividad(
       userId: _userId!,

@@ -11,7 +11,9 @@ import 'package:confetti/confetti.dart';
 import 'package:leoconlula/helpers/db_helper.dart';
 
 class ImagenArrastrePage extends StatefulWidget {
-  const ImagenArrastrePage({super.key});
+  final int? userId;
+
+  const ImagenArrastrePage({super.key, this.userId});
 
   @override
   State<ImagenArrastrePage> createState() => _ImagenArrastrePageState();
@@ -53,7 +55,7 @@ class _ImagenArrastrePageState extends State<ImagenArrastrePage> {
   }
 
   Future<void> _cargarPalabras() async {
-    _userId ??= await _resolverUserId();
+    _userId ??= widget.userId ?? await _resolverUserId();
     debugPrint('🔍 IMAGEN_ARRASTRE: Cargando vocabulario para usuario $_userId');
 
     final resultado = await DataService.obtenerVocabulario(userId: _userId);
@@ -125,7 +127,7 @@ class _ImagenArrastrePageState extends State<ImagenArrastrePage> {
 
   Future<void> _iniciarSesionSiNoExiste({List<String>? palabras}) async {
     if (_sesionId != null) return;
-    _userId ??= await _resolverUserId();
+    _userId ??= widget.userId ?? await _resolverUserId();
     if (_userId == null) return;
     _sesionId = await DataService.crearSesionActividad(
       userId: _userId!,
