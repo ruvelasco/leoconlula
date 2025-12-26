@@ -491,19 +491,21 @@ class _PrincipalPageState extends State<PrincipalPage> {
       );
     }
 
-    // Intentar cargar desde documentos (modo local)
-    try {
-      final dir = await getApplicationDocumentsDirectory();
-      final file = File('${dir.path}/$imagePath');
-      if (await file.exists()) {
-        return CircleAvatar(
-          radius: 59,
-          backgroundColor: const Color.fromRGBO(63, 46, 31, 1),
-          child: CircleAvatar(radius: 55, backgroundImage: FileImage(file)),
-        );
+    // Intentar cargar desde documentos (solo en modo local, no en web con API remota)
+    if (!DataService.useRemoteApi) {
+      try {
+        final dir = await getApplicationDocumentsDirectory();
+        final file = File('${dir.path}/$imagePath');
+        if (await file.exists()) {
+          return CircleAvatar(
+            radius: 59,
+            backgroundColor: const Color.fromRGBO(63, 46, 31, 1),
+            child: CircleAvatar(radius: 55, backgroundImage: FileImage(file)),
+          );
+        }
+      } catch (e) {
+        debugPrint('Error al cargar imagen de usuario: $e');
       }
-    } catch (e) {
-      debugPrint('Error al cargar imagen de usuario: $e');
     }
 
     // Si no se encuentra, usar la imagen por defecto de assets

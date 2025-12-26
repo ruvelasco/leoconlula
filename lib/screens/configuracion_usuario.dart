@@ -161,17 +161,40 @@ class _ConfiguracionUsuarioPageState extends State<ConfiguracionUsuarioPage> {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(source: ImageSource.gallery);
     if (pickedFile != null) {
-      final directory = await getApplicationDocumentsDirectory();
-      final fileName = 'avatar_usuario_$userId.png'; // Siempre el mismo nombre
-      final newPath = '${directory.path}/$fileName';
-      // Sobrescribe el archivo si ya existe
-      await File(pickedFile.path).copy(newPath);
+      if (DataService.useRemoteApi) {
+        // En modo remoto, subir la imagen al servidor
+        try {
+          final archivo = File(pickedFile.path);
+          final url = await DataService.subirImagen(archivo, tipo: 'avatar');
 
-      // Guarda el nombre de archivo en la base de datos
-      await DataService.actualizarCampoUsuarioString(userId, 'foto', fileName);
-      setState(() {
-        fotoUsuario = fileName;
-      });
+          if (url != null) {
+            await DataService.actualizarCampoUsuarioString(userId, 'foto', url);
+            setState(() {
+              fotoUsuario = url;
+            });
+          }
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Error al subir imagen: $e'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        }
+      } else {
+        // En modo local, guardar el archivo localmente
+        final directory = await getApplicationDocumentsDirectory();
+        final fileName = 'avatar_usuario_$userId.png';
+        final newPath = '${directory.path}/$fileName';
+        await File(pickedFile.path).copy(newPath);
+
+        await DataService.actualizarCampoUsuarioString(userId, 'foto', fileName);
+        setState(() {
+          fotoUsuario = fileName;
+        });
+      }
     }
   }
 
