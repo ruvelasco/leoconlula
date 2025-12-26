@@ -188,7 +188,15 @@ app.post('/api/sesiones', authenticate, async (req, res) => {
       palabra3: palabras[2],
     };
     const sesion = await prisma.actividadSesion.create({ data });
-    res.status(201).json(sesion);
+
+    // Convert BigInt to Number for JSON serialization
+    const sesionJSON = {
+      ...sesion,
+      inicio_at: sesion.inicio_at ? Number(sesion.inicio_at) : null,
+      fin_at: sesion.fin_at ? Number(sesion.fin_at) : null,
+    };
+
+    res.status(201).json(sesionJSON);
   } catch (err) {
     res.status(400).json({ error: (err as Error).message });
   }
@@ -237,7 +245,15 @@ app.patch('/api/sesiones/:id/finalizar', authenticate, async (req, res) => {
         resultado,
       },
     });
-    res.json(updated);
+
+    // Convert BigInt to Number for JSON serialization
+    const updatedJSON = {
+      ...updated,
+      inicio_at: updated.inicio_at ? Number(updated.inicio_at) : null,
+      fin_at: updated.fin_at ? Number(updated.fin_at) : null,
+    };
+
+    res.json(updatedJSON);
   } catch (err) {
     res.status(400).json({ error: (err as Error).message });
   }
@@ -347,7 +363,15 @@ app.get('/api/sesiones', authenticate, async (req, res) => {
         inicio_at: 'desc'
       }
     });
-    res.json(sesiones);
+
+    // Convert BigInt to Number for JSON serialization
+    const sesionesJSON = sesiones.map(sesion => ({
+      ...sesion,
+      inicio_at: sesion.inicio_at ? Number(sesion.inicio_at) : null,
+      fin_at: sesion.fin_at ? Number(sesion.fin_at) : null,
+    }));
+
+    res.json(sesionesJSON);
   } catch (err) {
     res.status(400).json({ error: (err as Error).message });
   }
