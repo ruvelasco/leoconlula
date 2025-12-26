@@ -425,10 +425,10 @@ class ApiService {
 
       final headers = await _getHeaders();
       final response = await http.post(
-        Uri.parse('$baseUrl/sesiones'),
+        Uri.parse('$baseUrl/api/sesiones'),
         headers: headers,
         body: jsonEncode({
-          'userId': userId,
+          'estudianteId': userId, // Cambiar userId a estudianteId para backend
           'actividad': actividad,
           'inicio_at': inicioMs,
           'nivel': nivel,
@@ -462,7 +462,7 @@ class ApiService {
 
       final headers = await _getHeaders();
       final response = await http.patch(
-        Uri.parse('$baseUrl/sesiones/$sesionId/finalizar'),
+        Uri.parse('$baseUrl/api/sesiones/$sesionId/finalizar'),
         headers: headers,
         body: jsonEncode({
           if (finMs != null) 'fin_at': finMs,
@@ -493,7 +493,7 @@ class ApiService {
     try {
       final headers = await _getHeaders();
       final response = await http.post(
-        Uri.parse('$baseUrl/sesiones/$sesionId/detalle'),
+        Uri.parse('$baseUrl/api/sesiones/$sesionId/detalle'),
         headers: headers,
         body: jsonEncode({
           'vocabularioId': vocabularioId,
@@ -515,9 +515,9 @@ class ApiService {
   /// Obtener sesiones (con filtros opcionales)
   static Future<List<Map<String, dynamic>>> obtenerSesiones({int? userId, String? actividad}) async {
     try {
-      String url = '$baseUrl/sesiones';
+      String url = '$baseUrl/api/sesiones';
       final params = <String, String>{};
-      if (userId != null) params['userId'] = userId.toString();
+      if (userId != null) params['estudianteId'] = userId.toString();
       if (actividad != null) params['actividad'] = actividad;
 
       final uri = Uri.parse(url).replace(queryParameters: params.isEmpty ? null : params);
@@ -541,7 +541,7 @@ class ApiService {
     try {
       final headers = await _getHeaders();
       final response = await http.delete(
-        Uri.parse('$baseUrl/sesiones?userId=$userId'),
+        Uri.parse('$baseUrl/api/sesiones?estudianteId=$userId'),
         headers: headers,
       );
 
@@ -559,7 +559,7 @@ class ApiService {
     try {
       final headers = await _getHeaders();
       final response = await http.delete(
-        Uri.parse('$baseUrl/sesiones'),
+        Uri.parse('$baseUrl/api/sesiones'),
         headers: headers,
       );
 
