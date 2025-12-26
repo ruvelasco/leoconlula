@@ -56,6 +56,24 @@ class DataService {
     }
   }
 
+  static Future<void> actualizarCampoUsuarioString(
+      int userId, String campo, String valor) async {
+    if (useRemoteApi) {
+      return await ApiService.actualizarCampoUsuarioString(userId, campo, valor);
+    } else {
+      return await DBHelper.actualizarCampoUsuarioString(userId, campo, valor);
+    }
+  }
+
+  static Future<void> actualizarCampoUsuarioInt(
+      int userId, String campo, int valor) async {
+    if (useRemoteApi) {
+      return await ApiService.actualizarCampoUsuarioInt(userId, campo, valor);
+    } else {
+      return await DBHelper.actualizarCampoUsuarioInt(userId, campo, valor);
+    }
+  }
+
   static Future<List<String>> obtenerOrdenActividades(int userId) async {
     if (useRemoteApi) {
       return await ApiService.obtenerOrdenActividades(userId);

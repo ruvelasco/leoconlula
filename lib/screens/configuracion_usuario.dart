@@ -6,7 +6,6 @@ import 'package:path_provider/path_provider.dart';
 import '../widgets/fondo_inicio.dart';
 import 'package:leoconlula/services/data_service.dart';
 import 'vocabulario.dart';
-import 'package:leoconlula/helpers/db_helper.dart';
 
 class ConfiguracionUsuarioPage extends StatefulWidget {
   final int userId;
@@ -127,13 +126,7 @@ class _ConfiguracionUsuarioPageState extends State<ConfiguracionUsuarioPage> {
           ),
     );
     if (seleccionada != null) {
-      final db = await DBHelper.database;
-      await db.update(
-        'usuarios',
-        {'fuente': seleccionada},
-        where: 'id = ?',
-        whereArgs: [userId],
-      );
+      await DataService.actualizarCampoUsuarioString(userId, 'fuente', seleccionada);
       setState(() {
         fuenteSeleccionada = seleccionada; // <--- Actualiza la fuente
       });
@@ -157,13 +150,7 @@ class _ConfiguracionUsuarioPageState extends State<ConfiguracionUsuarioPage> {
           ),
     );
     if (seleccionada != null) {
-      final db = await DBHelper.database;
-      await db.update(
-        'usuarios',
-        {'voz': seleccionada},
-        where: 'id = ?',
-        whereArgs: [userId],
-      );
+      await DataService.actualizarCampoUsuarioString(userId, 'voz', seleccionada);
       setState(() {
         vozSeleccionada = seleccionada; // <--- Actualiza la voz
       });
@@ -181,13 +168,7 @@ class _ConfiguracionUsuarioPageState extends State<ConfiguracionUsuarioPage> {
       await File(pickedFile.path).copy(newPath);
 
       // Guarda el nombre de archivo en la base de datos
-      final db = await DBHelper.database;
-      await db.update(
-        'usuarios',
-        {'foto': fileName},
-        where: 'id = ?',
-        whereArgs: [userId],
-      );
+      await DataService.actualizarCampoUsuarioString(userId, 'foto', fileName);
       setState(() {
         fotoUsuario = fileName;
       });
@@ -360,13 +341,7 @@ class _ConfiguracionUsuarioPageState extends State<ConfiguracionUsuarioPage> {
     );
 
     if (seleccionado != null) {
-      final db = await DBHelper.database;
-      await db.update(
-        'usuarios',
-        {'numero_repeticiones': seleccionado},
-        where: 'id = ?',
-        whereArgs: [userId],
-      );
+      await DataService.actualizarCampoUsuarioInt(userId, 'numero_repeticiones', seleccionado);
       setState(() {
         numeroRepeticiones = seleccionado;
       });

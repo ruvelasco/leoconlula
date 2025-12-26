@@ -1,11 +1,20 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'package:flutter/foundation.dart';
+import '../services/data_service.dart';
 
 class DBHelper {
   static Database? _db;
 
   static Future<Database> get database async {
+    // Prevent SQLite initialization on web when using remote API
+    if (kIsWeb && DataService.useRemoteApi) {
+      throw Exception(
+        'SQLite no está disponible en web cuando useRemoteApi=true. '
+        'Use DataService en lugar de DBHelper.database directamente.'
+      );
+    }
+
     if (_db != null) return _db!;
     _db = await _initDB();
     return _db!;
@@ -141,6 +150,26 @@ class DBHelper {
     await db.update(
       'usuarios',
       {campo: valor ? 1 : 0},
+      where: 'id = ?',
+      whereArgs: [userId],
+    );
+  }
+
+  static Future<void> actualizarCampoUsuarioString(int userId, String campo, String valor) async {
+    final db = await database;
+    await db.update(
+      'usuarios',
+      {campo: valor},
+      where: 'id = ?',
+      whereArgs: [userId],
+    );
+  }
+
+  static Future<void> actualizarCampoUsuarioInt(int userId, String campo, int valor) async {
+    final db = await database;
+    await db.update(
+      'usuarios',
+      {campo: valor},
       where: 'id = ?',
       whereArgs: [userId],
     );

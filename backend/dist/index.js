@@ -350,10 +350,32 @@ app.get('/usuarios', authenticate, async (req, res) => {
         res.status(400).json({ error: err.message });
     }
 });
+// Generate unique student code (LEO-XXXXXX)
+function generarCodigoEstudiante() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Sin O, 0, I, 1 para evitar confusión
+    let codigo = 'LEO-';
+    for (let i = 0; i < 6; i++) {
+        codigo += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return codigo;
+}
 // OLD: POST /usuarios -> NEW: POST /api/estudiantes
 app.post('/usuarios', authenticate, async (req, res) => {
     try {
-        const estudiante = await prisma.estudiante.create({ data: req.body });
+        // Generate unique code for student
+        let codigoUnico = generarCodigoEstudiante();
+        // Ensure it's unique (extremely rare collision, but check anyway)
+        let intentos = 0;
+        while (intentos < 5) {
+            const existe = await prisma.estudiante.findUnique({ where: { codigoUnico } });
+            if (!existe)
+                break;
+            codigoUnico = generarCodigoEstudiante();
+            intentos++;
+        }
+        const estudiante = await prisma.estudiante.create({
+            data: { ...req.body, codigoUnico }
+        });
         await prisma.estudianteAsignacion.create({
             data: {
                 authUserId: req.user.userId,
@@ -463,6 +485,129 @@ app.delete('/vocabulario/:id', authenticate, async (req, res) => {
         }
         await prisma.sesionVocabulario.deleteMany({ where: { vocabularioId: id } });
         await prisma.vocabulario.delete({ where: { id } });
+        res.status(204).send();
+    }
+    catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+// ==================== COMPARTIR ESTUDIANTES ====================
+// Join a student using their unique code
+app.post('/api/estudiantes/unirse', authenticate, async (req, res) => {
+    try {
+        const { codigo } = req.body;
+        if (!codigo) {
+            res.status(400).json({ error: 'Código es requerido' });
+            return;
+        }
+        // Find student by code
+        const estudiante = await prisma.estudiante.findUnique({
+            where: { codigoUnico: codigo.toUpperCase().trim() },
+        });
+        if (!estudiante) {
+            res.status(404).json({ error: 'Código inválido o estudiante no encontrado' });
+            return;
+        }
+        // Check if already has access
+        const existingAccess = await prisma.estudianteAsignacion.findFirst({
+            where: {
+                authUserId: req.user.userId,
+                estudianteId: estudiante.id,
+            },
+        });
+        if (existingAccess) {
+            res.status(400).json({ error: 'Ya tienes acceso a este estudiante' });
+            return;
+        }
+        // Create assignment
+        const asignacion = await prisma.estudianteAsignacion.create({
+            data: {
+                authUserId: req.user.userId,
+                estudianteId: estudiante.id,
+                role: 'TUTOR',
+                createdBy: req.user.userId,
+            },
+        });
+        res.status(201).json({
+            success: true,
+            message: `Te has unido exitosamente a ${estudiante.nombre || 'el estudiante'}`,
+            estudiante,
+        });
+    }
+    catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+// Get list of users who have access to a student
+app.get('/api/estudiantes/:id/compartidos', authenticate, async (req, res) => {
+    try {
+        const estudianteId = Number(req.params.id);
+        // Verify current user has access to this student
+        const asignacion = await prisma.estudianteAsignacion.findFirst({
+            where: {
+                authUserId: req.user.userId,
+                estudianteId,
+            },
+        });
+        if (!asignacion) {
+            res.status(403).json({ error: 'No tienes acceso a este estudiante' });
+            return;
+        }
+        // Get all users who have access
+        const asignaciones = await prisma.estudianteAsignacion.findMany({
+            where: { estudianteId },
+            include: {
+                authUser: {
+                    select: {
+                        id: true,
+                        nombre: true,
+                        email: true,
+                        role: true,
+                    },
+                },
+            },
+        });
+        res.json(asignaciones.map(a => ({
+            userId: a.authUserId,
+            nombre: a.authUser.nombre,
+            email: a.authUser.email,
+            role: a.role,
+            isCreator: a.createdBy === req.user.userId,
+            assignedAt: a.createdAt,
+        })));
+    }
+    catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+// Remove user's access to a student
+app.delete('/api/estudiantes/:id/compartir/:userId', authenticate, async (req, res) => {
+    try {
+        const estudianteId = Number(req.params.id);
+        const targetUserId = Number(req.params.userId);
+        // Verify current user has access to this student
+        const asignacion = await prisma.estudianteAsignacion.findFirst({
+            where: {
+                authUserId: req.user.userId,
+                estudianteId,
+            },
+        });
+        if (!asignacion) {
+            res.status(403).json({ error: 'No tienes acceso a este estudiante' });
+            return;
+        }
+        // Don't allow removing the creator's own access
+        if (targetUserId === req.user.userId) {
+            res.status(400).json({ error: 'No puedes eliminar tu propio acceso' });
+            return;
+        }
+        // Delete the assignment
+        await prisma.estudianteAsignacion.deleteMany({
+            where: {
+                authUserId: targetUserId,
+                estudianteId,
+            },
+        });
         res.status(204).send();
     }
     catch (err) {

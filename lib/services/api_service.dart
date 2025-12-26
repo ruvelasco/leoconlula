@@ -216,7 +216,7 @@ class ApiService {
     }
   }
 
-  /// Actualizar un campo específico del usuario
+  /// Actualizar un campo booleano del usuario
   static Future<void> actualizarCampoUsuarioBool(int userId, String campo, bool valor) async {
     try {
       final headers = await _getHeaders();
@@ -231,6 +231,44 @@ class ApiService {
       }
     } catch (e) {
       debugPrint('Error en actualizarCampoUsuarioBool: $e');
+      rethrow;
+    }
+  }
+
+  /// Actualizar un campo de texto del usuario (fuente, voz, tipo, etc.)
+  static Future<void> actualizarCampoUsuarioString(int userId, String campo, String valor) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.patch(
+        Uri.parse('$baseUrl/usuarios/$userId/campos'),
+        headers: headers,
+        body: jsonEncode({campo: valor}),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Error al actualizar campo: ${response.body}');
+      }
+    } catch (e) {
+      debugPrint('Error en actualizarCampoUsuarioString: $e');
+      rethrow;
+    }
+  }
+
+  /// Actualizar un campo numérico del usuario (numero_repeticiones, etc.)
+  static Future<void> actualizarCampoUsuarioInt(int userId, String campo, int valor) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.patch(
+        Uri.parse('$baseUrl/usuarios/$userId/campos'),
+        headers: headers,
+        body: jsonEncode({campo: valor}),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Error al actualizar campo: ${response.body}');
+      }
+    } catch (e) {
+      debugPrint('Error en actualizarCampoUsuarioInt: $e');
       rethrow;
     }
   }
