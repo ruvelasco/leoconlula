@@ -39,6 +39,7 @@ class _PrevioJuegoPageState extends State<PrevioJuegoPage> {
   List<String> ordenActividades = [];
   List<String> actividadesHabilitadas = [];
   bool bloqueoActividades = false; // Opción para habilitar/deshabilitar bloqueo
+  final CarouselSliderController _carouselController = CarouselSliderController();
 
   @override
   void initState() {
@@ -126,6 +127,28 @@ class _PrevioJuegoPageState extends State<PrevioJuegoPage> {
       bloqueoActividades = bloqueo;
     });
     _cargarProgresoActividades();
+  }
+
+  /// Verifica si el bloque actual tiene todas las actividades habilitadas completadas
+  bool _bloqueActualCompleto() {
+    if (!bloqueoActividades) return true; // Si no hay bloqueo, siempre está completo
+
+    // Obtener actividades requeridas
+    final actividadesRequeridas = actividadesHabilitadas.isNotEmpty
+        ? actividadesHabilitadas
+        : [
+            'aprendizaje',
+            'discriminacion',
+            'discriminacion_inversa',
+            'silabas',
+            'arrastre',
+            'doble',
+            'silabas_orden',
+            'silabas_distrac',
+          ];
+
+    // Verificar si todas están completadas
+    return actividadesRequeridas.every((act) => actividadesCompletadas[act] == true);
   }
 
   Future<void> _cargarProgresoActividades() async {
@@ -335,6 +358,7 @@ class _PrevioJuegoPageState extends State<PrevioJuegoPage> {
                   // Carrusel de tarjetas
                   Expanded(
                     child: CarouselSlider.builder(
+                      carouselController: _carouselController,
                       itemCount: tarjetasVocabulario.length,
                       itemBuilder: (context, index, realIndex) {
                         return _buildTarjetaVocabulario(
@@ -349,7 +373,41 @@ class _PrevioJuegoPageState extends State<PrevioJuegoPage> {
                         viewportFraction: 0.6,
                         enlargeCenterPage: true,
                         enableInfiniteScroll: false,
-                        onPageChanged: (index, reason) {
+                        onPageChanged: (index, reason) async {
+                          // Si el bloqueo está activado y intentan avanzar sin completar
+                          if (bloqueoActividades &&
+                              reason == CarouselPageChangedReason.manual &&
+                              index > tarjetaActual &&
+                              !_bloqueActualCompleto()) {
+                            // Mostrar mensaje de advertencia
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: const Row(
+                                  children: [
+                                    Icon(Icons.lock, color: Colors.white),
+                                    SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        'Completa todas las actividades de este bloque primero',
+                                        style: TextStyle(fontWeight: FontWeight.bold),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                backgroundColor: Colors.orange[700],
+                                duration: const Duration(seconds: 2),
+                              ),
+                            );
+                            // Volver a la tarjeta actual
+                            await Future.delayed(const Duration(milliseconds: 100));
+                            _carouselController.animateToPage(
+                              tarjetaActual,
+                              duration: const Duration(milliseconds: 300),
+                              curve: Curves.easeInOut,
+                            );
+                            return;
+                          }
+
                           setState(() {
                             tarjetaActual = index;
                           });
@@ -365,17 +423,41 @@ class _PrevioJuegoPageState extends State<PrevioJuegoPage> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: List.generate(
                         tarjetasVocabulario.length,
-                        (index) => Container(
-                          width: 8,
-                          height: 8,
-                          margin: const EdgeInsets.symmetric(horizontal: 4),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: tarjetaActual == index
-                                ? const Color.fromRGBO(63, 46, 31, 1)
-                                : Colors.grey[400],
-                          ),
-                        ),
+                        (index) {
+                          // Determinar si este bloque está bloqueado
+                          final bloqueEstaBloqueado = bloqueoActividades &&
+                              index > tarjetaActual &&
+                              !_bloqueActualCompleto();
+
+                          return Container(
+                            width: tarjetaActual == index ? 12 : 8,
+                            height: tarjetaActual == index ? 12 : 8,
+                            margin: const EdgeInsets.symmetric(horizontal: 4),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: tarjetaActual == index
+                                  ? const Color.fromRGBO(63, 46, 31, 1)
+                                  : bloqueEstaBloqueado
+                                      ? Colors.grey[300]
+                                      : Colors.grey[400],
+                              border: bloqueEstaBloqueado
+                                  ? Border.all(
+                                      color: Colors.grey[400]!,
+                                      width: 1,
+                                    )
+                                  : null,
+                            ),
+                            child: bloqueEstaBloqueado
+                                ? const Center(
+                                    child: Icon(
+                                      Icons.lock,
+                                      size: 6,
+                                      color: Colors.grey,
+                                    ),
+                                  )
+                                : null,
+                          );
+                        },
                       ),
                     ),
                   ),
@@ -426,51 +508,95 @@ class _PrevioJuegoPageState extends State<PrevioJuegoPage> {
   ) {
     // Solo mostrar botones activos si es la tarjeta actual
     final bool esTarjetaActual = indiceTarjeta == tarjetaActual;
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: const Color.fromRGBO(63, 46, 31, 1),
-          width: 10,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.2),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          // Sección de palabras (3 palabras)
-          Expanded(
-            flex: 1,
-            child: Container(
-              padding: const EdgeInsets.all(10),
-              child: _buildPalabrasRow(palabras),
+
+    // Determinar si esta tarjeta está bloqueada (tarjetas futuras cuando bloqueo activado)
+    final bool bloqueEstaBloqueado = bloqueoActividades &&
+        indiceTarjeta > tarjetaActual &&
+        !_bloqueActualCompleto();
+
+    return Stack(
+      children: [
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: 10),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: const Color.fromRGBO(63, 46, 31, 1),
+              width: 10,
             ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.2),
+                blurRadius: 10,
+                offset: const Offset(0, 5),
+              ),
+            ],
           ),
-          // Divisor
-          Divider(color: Colors.grey[300], thickness: 2, height: 2),
-          // Sección de actividades
-          Expanded(
-            flex: 4,
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              child: GridView.count(
-                crossAxisCount: 3,
-                mainAxisSpacing: 12,
-                crossAxisSpacing: 12,
-                childAspectRatio: 1.2,
-                children: _buildActividades(context, esTarjetaActual),
+          child: Column(
+            children: [
+              // Sección de palabras (3 palabras)
+              Expanded(
+                flex: 1,
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  child: _buildPalabrasRow(palabras),
+                ),
+              ),
+              // Divisor
+              Divider(color: Colors.grey[300], thickness: 2, height: 2),
+              // Sección de actividades
+              Expanded(
+                flex: 4,
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  child: GridView.count(
+                    crossAxisCount: 3,
+                    mainAxisSpacing: 12,
+                    crossAxisSpacing: 12,
+                    childAspectRatio: 1.2,
+                    children: _buildActividades(context, esTarjetaActual),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        // Overlay de bloqueo para bloques futuros no completados
+        if (bloqueEstaBloqueado)
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 10),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.6),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.lock,
+                    size: 80,
+                    color: Colors.white.withValues(alpha: 0.9),
+                  ),
+                  const SizedBox(height: 16),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 40),
+                    child: Text(
+                      'Completa el bloque anterior',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.9),
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
-        ],
-      ),
+      ],
     );
   }
 
