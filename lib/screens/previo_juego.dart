@@ -47,18 +47,31 @@ class _PrevioJuegoPageState extends State<PrevioJuegoPage> {
   }
 
   Future<void> _cargarFotoUsuario() async {
-    final db = await DBHelper.database;
-    final resultado = await db.query(
-      'usuarios',
-      where: 'id = ?',
-      whereArgs: [widget.userId],
-    );
-    if (resultado.isNotEmpty && resultado.first['foto'] != null) {
-      final foto = resultado.first['foto'] as String;
-      final dir = await getApplicationDocumentsDirectory();
-      setState(() {
-        fotoPath = '${dir.path}/$foto';
-      });
+    try {
+      final usuarios = await DataService.obtenerUsuarios();
+      final usuario = usuarios.firstWhere(
+        (u) => u['id'] == widget.userId,
+        orElse: () => <String, dynamic>{},
+      );
+
+      if (usuario.isNotEmpty && usuario['foto'] != null) {
+        final foto = usuario['foto'] as String;
+
+        // Si es una URL, usarla directamente
+        if (foto.startsWith('http://') || foto.startsWith('https://')) {
+          setState(() {
+            fotoPath = foto;
+          });
+        } else if (!DataService.useRemoteApi) {
+          // Solo acceder a archivos locales en modo no-remoto
+          final dir = await getApplicationDocumentsDirectory();
+          setState(() {
+            fotoPath = '${dir.path}/$foto';
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error al cargar foto de usuario: $e');
     }
   }
 
@@ -111,6 +124,16 @@ class _PrevioJuegoPageState extends State<PrevioJuegoPage> {
   }
 
   Future<void> _cargarProgresoActividades() async {
+    // En modo remoto, deshabilitamos temporalmente el seguimiento de progreso
+    // TODO: Implementar obtención de sesiones desde API
+    if (DataService.useRemoteApi) {
+      setState(() {
+        actividadesCompletadas = {};
+        bloqueAnteriorCompletado = true; // Permitir acceso a todas las actividades
+      });
+      return;
+    }
+
     final db = await DBHelper.database;
 
     // Obtener las palabras del bloque actual (tarjeta actual)
