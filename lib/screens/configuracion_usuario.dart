@@ -476,17 +476,9 @@ class _ConfiguracionUsuarioPageState extends State<ConfiguracionUsuarioPage> {
             child: Container(
               margin: const EdgeInsets.only(
                 right: 40,
-              ), // <-- Añade margen derecho aquí
-
+              ),
               width: anchoPantalla * (2 / 3),
               height: altoPantalla * (2 / 3),
-              decoration: BoxDecoration(
-                image: const DecorationImage(
-                  image: AssetImage('assets/images/pantalla.png'),
-                  fit: BoxFit.contain,
-                  alignment: Alignment.topRight,
-                ),
-              ),
               child: Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
