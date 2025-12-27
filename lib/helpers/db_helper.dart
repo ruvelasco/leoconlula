@@ -365,6 +365,34 @@ class DBHelper {
     );
   }
 
+  /// Obtiene sesiones con filtros opcionales
+  static Future<List<Map<String, dynamic>>> obtenerSesiones({int? userId, String? actividad}) async {
+    final db = await database;
+
+    String? where;
+    List<dynamic>? whereArgs;
+
+    if (userId != null && actividad != null) {
+      where = 'user_id = ? AND actividad = ?';
+      whereArgs = [userId, actividad];
+    } else if (userId != null) {
+      where = 'user_id = ?';
+      whereArgs = [userId];
+    } else if (actividad != null) {
+      where = 'actividad = ?';
+      whereArgs = [actividad];
+    }
+
+    final sesiones = await db.query(
+      'actividad_sesiones',
+      where: where,
+      whereArgs: whereArgs,
+      orderBy: 'inicio_at DESC',
+    );
+
+    return sesiones;
+  }
+
   /// Guarda el orden de actividades para un usuario
   static Future<void> guardarOrdenActividades(int userId, List<String> orden) async {
     final db = await database;

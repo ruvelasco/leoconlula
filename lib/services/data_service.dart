@@ -263,6 +263,14 @@ class DataService {
     }
   }
 
+  static Future<List<Map<String, dynamic>>> obtenerSesiones({int? userId, String? actividad}) async {
+    if (useRemoteApi) {
+      return await ApiService.obtenerSesiones(userId: userId, actividad: actividad);
+    } else {
+      return await DBHelper.obtenerSesiones(userId: userId, actividad: actividad);
+    }
+  }
+
   // ==================== ARCHIVOS ====================
 
   /// Subir imagen y retornar la URL

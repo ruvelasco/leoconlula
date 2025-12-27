@@ -161,10 +161,55 @@ class _PrevioJuegoPageState extends State<PrevioJuegoPage> {
         });
         return;
       }
-      // TODO: Implementar obtención de sesiones desde API cuando bloqueo esté activado
-      // Por ahora, con bloqueo activado en modo remoto, solo primera actividad disponible
+
+      // Obtener las palabras del bloque actual
+      final palabrasBloqueActual = tarjetaActual < tarjetasVocabulario.length
+          ? tarjetasVocabulario[tarjetaActual]
+              .map((p) => (p['label'] ?? '').toString())
+              .toSet()
+          : <String>{};
+
+      debugPrint('🔍 BLOQUEO: Cargando sesiones para bloque $tarjetaActual');
+      debugPrint('🔍 BLOQUEO: Palabras del bloque actual: $palabrasBloqueActual');
+
+      // Obtener sesiones completadas desde la API
+      final sesiones = await DataService.obtenerSesiones(userId: widget.userId);
+      final sesionesCompletadas = sesiones.where((s) => s['resultado'] == 'completada').toList();
+
+      debugPrint('🔍 BLOQUEO: Total sesiones: ${sesiones.length}, completadas: ${sesionesCompletadas.length}');
+
+      final mapa = <String, bool>{};
+
+      for (final sesion in sesionesCompletadas) {
+        final act = (sesion['actividad'] ?? '').toString();
+        if (act.isEmpty) continue;
+
+        final p1 = (sesion['palabra1'] ?? '').toString();
+        final p2 = (sesion['palabra2'] ?? '').toString();
+        final p3 = (sesion['palabra3'] ?? '').toString();
+
+        // Verificar si pertenece al bloque actual
+        bool perteneceAlBloqueActual = false;
+        if (p1.isNotEmpty && palabrasBloqueActual.contains(p1)) {
+          perteneceAlBloqueActual = true;
+        }
+        if (p2.isNotEmpty && palabrasBloqueActual.contains(p2)) {
+          perteneceAlBloqueActual = true;
+        }
+        if (p3.isNotEmpty && palabrasBloqueActual.contains(p3)) {
+          perteneceAlBloqueActual = true;
+        }
+
+        if (perteneceAlBloqueActual) {
+          mapa[act] = true;
+          debugPrint('🔍 BLOQUEO: Actividad completada: $act para palabras: $p1, $p2, $p3');
+        }
+      }
+
+      debugPrint('🔍 BLOQUEO: Actividades completadas en bloque actual: $mapa');
+
       setState(() {
-        actividadesCompletadas = {}; // Ninguna completada aún (podemos agregar endpoint más tarde)
+        actividadesCompletadas = mapa;
         bloqueAnteriorCompletado = true;
       });
       return;
