@@ -188,25 +188,35 @@ class _PrevioJuegoPageState extends State<PrevioJuegoPage> {
         final p2 = (sesion['palabra2'] ?? '').toString();
         final p3 = (sesion['palabra3'] ?? '').toString();
 
+        debugPrint('🔍 BLOQUEO: Sesión - actividad: $act, palabras: [$p1, $p2, $p3]');
+
         // Verificar si pertenece al bloque actual
         bool perteneceAlBloqueActual = false;
         if (p1.isNotEmpty && palabrasBloqueActual.contains(p1)) {
           perteneceAlBloqueActual = true;
+          debugPrint('   ✓ Palabra1 "$p1" pertenece al bloque actual');
         }
         if (p2.isNotEmpty && palabrasBloqueActual.contains(p2)) {
           perteneceAlBloqueActual = true;
+          debugPrint('   ✓ Palabra2 "$p2" pertenece al bloque actual');
         }
         if (p3.isNotEmpty && palabrasBloqueActual.contains(p3)) {
           perteneceAlBloqueActual = true;
+          debugPrint('   ✓ Palabra3 "$p3" pertenece al bloque actual');
         }
 
         if (perteneceAlBloqueActual) {
           mapa[act] = true;
-          debugPrint('🔍 BLOQUEO: Actividad completada: $act para palabras: $p1, $p2, $p3');
+          debugPrint('   ✅ Actividad "$act" marcada como completada');
+        } else {
+          debugPrint('   ❌ Sesión no pertenece al bloque actual');
         }
       }
 
-      debugPrint('🔍 BLOQUEO: Actividades completadas en bloque actual: $mapa');
+      debugPrint('🔍 BLOQUEO: ========================================');
+      debugPrint('🔍 BLOQUEO: RESUMEN - Actividades completadas: $mapa');
+      debugPrint('🔍 BLOQUEO: Actividades habilitadas: $actividadesHabilitadas');
+      debugPrint('🔍 BLOQUEO: ========================================');
 
       setState(() {
         actividadesCompletadas = mapa;
@@ -752,10 +762,15 @@ class _PrevioJuegoPageState extends State<PrevioJuegoPage> {
             actividadesHabilitadas.contains(clave))
         .toList();
 
-    print('🎮 Total actividades configuradas: ${ordenAUsar.length}');
-    print(
-        '🎮 Actividades a mostrar (filtradas): ${actividadesAMostrar.length}');
-    print('🎮 Lista de actividades a mostrar: $actividadesAMostrar');
+    debugPrint('🎮 ======================================== ');
+    debugPrint('🎮 EVALUANDO ACTIVIDADES');
+    debugPrint('🎮 Total actividades configuradas: ${ordenAUsar.length}');
+    debugPrint('🎮 Actividades a mostrar (filtradas): ${actividadesAMostrar.length}');
+    debugPrint('🎮 Lista de actividades a mostrar: $actividadesAMostrar');
+    debugPrint('🎮 Actividades completadas MAP: $actividadesCompletadas');
+    debugPrint('🎮 Es tarjeta actual: $esTarjetaActual');
+    debugPrint('🎮 Bloqueo activado: $bloqueoActividades');
+    debugPrint('🎮 ======================================== ');
 
     final List<Widget> botones = [];
     for (var i = 0; i < actividadesAMostrar.length; i++) {
@@ -764,9 +779,10 @@ class _PrevioJuegoPageState extends State<PrevioJuegoPage> {
 
       if (actividad == null) continue;
 
+      final actividadPrevia = i > 0 ? actividadesAMostrar[i - 1] : null;
       final previaCompletada = i == 0
           ? true
-          : (actividadesCompletadas[actividadesAMostrar[i - 1]] ?? false);
+          : (actividadesCompletadas[actividadPrevia] ?? false);
 
       // Determinar si la actividad está habilitada basado en la configuración
       final estaHabilitado = !bloqueoActividades || // Si el bloqueo está deshabilitado, todas están abiertas
@@ -774,15 +790,17 @@ class _PrevioJuegoPageState extends State<PrevioJuegoPage> {
           i == 0 || // Primera actividad siempre está disponible
           previaCompletada; // O si la anterior está completada
 
-      print('🔍 Actividad $i: $clave');
-      print('   - Es tarjeta actual: $esTarjetaActual');
-      print('   - Bloque anterior completo: $bloqueAnteriorCompletado');
-      print('   - Bloqueo activado: $bloqueoActividades');
-      print(
-          '   - Previa completada (${i > 0 ? actividadesAMostrar[i - 1] : 'primera'}): $previaCompletada');
-      print('   - HABILITADO: $estaHabilitado');
-      print(
-          '   - Actividades completadas bloque actual: $actividadesCompletadas');
+      debugPrint('');
+      debugPrint('🔍 Evaluando actividad $i: "$clave"');
+      debugPrint('   - Actividad previa: ${actividadPrevia ?? "N/A"}');
+      debugPrint('   - ¿Previa completada?: $previaCompletada');
+      if (actividadPrevia != null) {
+        debugPrint('   - Estado en mapa de previa "$actividadPrevia": ${actividadesCompletadas[actividadPrevia]}');
+      }
+      debugPrint('   - ¿Bloqueo activado?: $bloqueoActividades');
+      debugPrint('   - ¿Es tarjeta actual?: $esTarjetaActual');
+      debugPrint('   - ¿Es primera (i==0)?: ${i == 0}');
+      debugPrint('   - RESULTADO FINAL - ¿HABILITADO?: $estaHabilitado');
 
       botones.add(
         _buildActividadButton(
