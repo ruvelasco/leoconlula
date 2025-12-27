@@ -190,26 +190,44 @@ class _PrevioJuegoPageState extends State<PrevioJuegoPage> {
 
         debugPrint('🔍 BLOQUEO: Sesión - actividad: $act, palabras: [$p1, $p2, $p3]');
 
-        // Verificar si pertenece al bloque actual
-        bool perteneceAlBloqueActual = false;
-        if (p1.isNotEmpty && palabrasBloqueActual.contains(p1)) {
-          perteneceAlBloqueActual = true;
-          debugPrint('   ✓ Palabra1 "$p1" pertenece al bloque actual');
+        // Contar cuántas palabras de la sesión pertenecen al bloque actual
+        int palabrasCoincidentes = 0;
+        int totalPalabrasEnSesion = 0;
+
+        if (p1.isNotEmpty) {
+          totalPalabrasEnSesion++;
+          if (palabrasBloqueActual.contains(p1)) {
+            palabrasCoincidentes++;
+            debugPrint('   ✓ Palabra1 "$p1" pertenece al bloque actual');
+          }
         }
-        if (p2.isNotEmpty && palabrasBloqueActual.contains(p2)) {
-          perteneceAlBloqueActual = true;
-          debugPrint('   ✓ Palabra2 "$p2" pertenece al bloque actual');
+        if (p2.isNotEmpty) {
+          totalPalabrasEnSesion++;
+          if (palabrasBloqueActual.contains(p2)) {
+            palabrasCoincidentes++;
+            debugPrint('   ✓ Palabra2 "$p2" pertenece al bloque actual');
+          }
         }
-        if (p3.isNotEmpty && palabrasBloqueActual.contains(p3)) {
-          perteneceAlBloqueActual = true;
-          debugPrint('   ✓ Palabra3 "$p3" pertenece al bloque actual');
+        if (p3.isNotEmpty) {
+          totalPalabrasEnSesion++;
+          if (palabrasBloqueActual.contains(p3)) {
+            palabrasCoincidentes++;
+            debugPrint('   ✓ Palabra3 "$p3" pertenece al bloque actual');
+          }
         }
+
+        // La sesión pertenece al bloque actual si TODAS las palabras de la sesión están en el bloque
+        // Esto evita que sesiones de otros bloques se cuenten aquí
+        final perteneceAlBloqueActual = totalPalabrasEnSesion > 0 &&
+                                         palabrasCoincidentes == totalPalabrasEnSesion;
+
+        debugPrint('   → Palabras coincidentes: $palabrasCoincidentes de $totalPalabrasEnSesion');
 
         if (perteneceAlBloqueActual) {
           mapa[act] = true;
-          debugPrint('   ✅ Actividad "$act" marcada como completada');
+          debugPrint('   ✅ Actividad "$act" marcada como completada (todas las palabras coinciden)');
         } else {
-          debugPrint('   ❌ Sesión no pertenece al bloque actual');
+          debugPrint('   ❌ Sesión no pertenece al bloque actual (no todas las palabras coinciden)');
         }
       }
 
@@ -260,28 +278,51 @@ class _PrevioJuegoPageState extends State<PrevioJuegoPage> {
       final p2 = (fila['palabra2'] ?? '').toString();
       final p3 = (fila['palabra3'] ?? '').toString();
 
-      // Verificar si pertenece al bloque actual
-      bool perteneceAlBloqueActual = false;
-      if (p1.isNotEmpty && palabrasBloqueActual.contains(p1))
-        perteneceAlBloqueActual = true;
-      if (p2.isNotEmpty && palabrasBloqueActual.contains(p2))
-        perteneceAlBloqueActual = true;
-      if (p3.isNotEmpty && palabrasBloqueActual.contains(p3))
-        perteneceAlBloqueActual = true;
+      // Contar palabras coincidentes para bloque actual
+      int palabrasCoincidentesActual = 0;
+      int totalPalabras = 0;
+
+      if (p1.isNotEmpty) {
+        totalPalabras++;
+        if (palabrasBloqueActual.contains(p1)) palabrasCoincidentesActual++;
+      }
+      if (p2.isNotEmpty) {
+        totalPalabras++;
+        if (palabrasBloqueActual.contains(p2)) palabrasCoincidentesActual++;
+      }
+      if (p3.isNotEmpty) {
+        totalPalabras++;
+        if (palabrasBloqueActual.contains(p3)) palabrasCoincidentesActual++;
+      }
+
+      // La sesión pertenece al bloque actual si TODAS las palabras coinciden
+      final perteneceAlBloqueActual = totalPalabras > 0 &&
+                                       palabrasCoincidentesActual == totalPalabras;
 
       if (perteneceAlBloqueActual) {
         mapa[act] = true;
       }
 
-      // Verificar si pertenece al bloque anterior
+      // Verificar si pertenece al bloque anterior (misma lógica)
       if (tarjetaActual > 0) {
-        bool perteneceAlBloqueAnterior = false;
-        if (p1.isNotEmpty && palabrasBloqueAnterior.contains(p1))
-          perteneceAlBloqueAnterior = true;
-        if (p2.isNotEmpty && palabrasBloqueAnterior.contains(p2))
-          perteneceAlBloqueAnterior = true;
-        if (p3.isNotEmpty && palabrasBloqueAnterior.contains(p3))
-          perteneceAlBloqueAnterior = true;
+        int palabrasCoincidentesAnterior = 0;
+        int totalPalabrasAnterior = 0;
+
+        if (p1.isNotEmpty) {
+          totalPalabrasAnterior++;
+          if (palabrasBloqueAnterior.contains(p1)) palabrasCoincidentesAnterior++;
+        }
+        if (p2.isNotEmpty) {
+          totalPalabrasAnterior++;
+          if (palabrasBloqueAnterior.contains(p2)) palabrasCoincidentesAnterior++;
+        }
+        if (p3.isNotEmpty) {
+          totalPalabrasAnterior++;
+          if (palabrasBloqueAnterior.contains(p3)) palabrasCoincidentesAnterior++;
+        }
+
+        final perteneceAlBloqueAnterior = totalPalabrasAnterior > 0 &&
+                                           palabrasCoincidentesAnterior == totalPalabrasAnterior;
 
         if (perteneceAlBloqueAnterior) {
           actividadesBloqueAnterior[act] = true;
